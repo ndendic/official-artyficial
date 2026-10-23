@@ -1,0 +1,141 @@
+#!/usr/bin/env bash
+# Install, upgrade or remove the herdr console Plugin (artyficial.herdr) in a running Workspace.
+#
+#   bin/herdr-console install [--no-build] [-p DIR]
+#                                            build package/, add the Patch Regions to the Workspace's
+#                                            stage.json, then stage, review, install, configure, enable
+#                                            (run it again with a new build to upgrade: configuration is kept);
+#                                            -p DIR installs a package folder you already have, such as an
+#                                            extracted release archive (implies --no-build)
+#   bin/herdr-console regions                only add the console and agents Patch Regions to stage.json
+#   bin/herdr-console remove [--purge]       disable and remove; --purge also deletes what core leaves
+#                                            (data, packages, locks, staged copies) once it is stopped
+#   bin/herdr-console status                 the installed version, digest and state
+#
+# Options: -w DIR   the Workspace folder (default: the current directory; its .env gives PORT)
+#          -a URL   the server (default http://localhost:$PORT from the Workspace's .env)
+#          --rt BIN the rt binary (default: rt on PATH, or $RT)
+# Environment: DATA_START_DIR  a data-start checkout for the build, when it is not beside this repository
+#
+# Needs a signed-in owner (rt login) and jq; the build also needs go and the RT Station Go SDK
+# (see README.md). Runs on bash 3.2 (macOS) and newer. Works with both Workspace layouts: .rt/ (current rt) and .ds/ (rt v0.20.1).
+# A Workspace whose stage.json gains the `console` and `agents` Patch Regions needs a restart of
+# `rt run` to load them.
+set -euo pipefail
+
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+rt="${RT:-rt}" ws="$PWD" addr="" build=1 purge=0 cmd="" pkg=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -w) ws="$2"; shift 2 ;;
+    -a) addr="$2"; shift 2 ;;
+    --rt) rt="$2"; shift 2 ;;
+    -p) pkg="$2"; build=0; shift 2 ;;
+    --no-build) build=0; shift ;;
+    --purge) purge=1; shift ;;
+    install|regions|remove|status) cmd="$1"; shift ;;
+    *) echo "unknown argument: $1 (see the head of $0)" >&2; exit 2 ;;
+  esac
+done
+[ -n "$cmd" ] || { sed -n 2,23p "$0" | sed 's/^# \{0,1\}//'; exit 2; }
+command -v jq >/dev/null || { echo "jq is required" >&2; exit 1; }
+[ -z "$pkg" ] || pkg="$(cd "$pkg" && pwd)"
+ws="$(cd "$ws" && pwd)"
+cd "$ws"
+# The Workspace's state folder: .rt (current rt) or .ds (rt v0.20.1); .rt wins when both exist.
+state=".rt"
+[ -d .rt ] || { [ -d .ds ] && state=".ds"; }
+a=(); [ -z "$addr" ] || a=(-a "$addr")
+
+# The served version of a capability: core moves them (core.plugin.list is 1.1.0 today).
+catalog=""
+ver() {
+  [ -n "$catalog" ] || catalog="$("$rt" capability ${a[@]+"${a[@]}"} list)"
+  jq -r --arg id "$1" '[.. | objects | select(.id? == $id) | .version] | first // "1.0.0"' <<<"$catalog"
+}
+inv() { # inv ID JSON: the result object, or exit 1 with core's error
+  local out
+  out="$("$rt" capability ${a[@]+"${a[@]}"} invoke "$1" "$(ver "$1")" "$2" 2>&1)" || true
+  if ! jq -e '.ok == true' >/dev/null 2>&1 <<<"$out"; then echo "$1 failed: $out" >&2; return 1; fi
+  jq -c '.result // {}' <<<"$out"
+}
+installed() { # the installed record, or empty
+  inv core.plugin.list '{}' | jq -c '.inventory.installed["artyficial.herdr"] // empty'
+}
+
+regions() {
+  local stage=""
+  for d in .rt .ds; do
+    if [ -f "$ws/$d/web/stage.json" ]; then stage="$ws/$d/web/stage.json"; break; fi
+  done
+  [ -n "$stage" ] || { echo "no .rt/web/stage.json or .ds/web/stage.json in $ws: is it an RT Station Workspace?" >&2; return 1; }
+  local accept="size(payload.html) <= 65536 && !('script' in elements(payload.html)) && !attributes(payload.html).exists(a, a.startsWith('on')) && elements(payload.html).all(t, knownElement(t))"
+  local tmp
+  tmp="$(mktemp)"
+  jq --arg accept "$accept" '
+    def region($n; $el; $d): {name: $n, element: $el, fill: "personal", expected_producers: ["*"], description: $d, accept: $accept};
+    (.regions // .patch_regions) as $have
+    | (if .regions then "regions" else "patch_regions" end) as $key
+    | reduce ([region("console"; "pill-console"; "The pill'"'"'s agent console: a session picker and the conversation, for one browser"),
+               region("agents"; "agents-panel"; "The Agents sidebar: the herdr sessions grouped by workspace, for one browser")][]) as $r
+        (.; if any(.[$key][]?; .name == $r.name) then . else .[$key] += [$r] end)
+  ' "$stage" >"$tmp"
+  if cmp -s "$tmp" "$stage"; then echo "Patch Regions console and agents are already in stage.json"; rm -f "$tmp"; else
+    cat "$tmp" >"$stage"; rm -f "$tmp"
+    echo "added the Patch Regions console and agents to $stage (the shell must also carry #pill-console and #agents-panel: see README.md; restart rt run to load them)"
+  fi
+}
+
+case "$cmd" in
+regions) regions ;;
+status) installed | jq -r '"\(.id) \(.version) \(if .active then "active" elif .enabled then "enabled" else "disabled" end) \(.digest)"' ;;
+install)
+  if [ "$build" = 1 ]; then (cd "$here" && go run build.go); fi
+  src="${pkg:-$here/package}"
+  [ -f "$src/manifest.json" ] || { echo "no $src/manifest.json: build first (drop --no-build), or give -p the folder of an extracted release archive" >&2; exit 1; }
+  jq -e '.id == "artyficial.herdr"' "$src/manifest.json" >/dev/null || { echo "$src is not the artyficial.herdr package" >&2; exit 1; }
+  regions || true
+  staging="$(inv core.plugin.list '{}' | jq -r .package_staging)"
+  [ -n "$staging" ] && [ "$staging" != null ] || { echo "core.plugin.list gave no package_staging" >&2; exit 1; }
+  mkdir -p "$staging" && rm -rf "$staging/herdr-console" && cp -R "$src" "$staging/herdr-console"
+  review="$(inv core.plugin.review '{"package":"herdr-console"}')"
+  digest="$(jq -r .digest <<<"$review")"
+  jq -r '.summary // .lines // empty' <<<"$review" | head -20
+  prev="$(installed || true)"
+  if [ -n "$prev" ] && [ "$(jq -r .enabled <<<"$prev")" = true ]; then
+    echo "upgrading $(jq -r .version <<<"$prev") -> disable first"
+    inv core.plugin.disable '{"id":"artyficial.herdr"}' >/dev/null
+  fi
+  inv core.plugin.install "{\"package\":\"herdr-console\",\"digest\":\"$digest\",\"allow_unsigned\":true}" >/dev/null
+  [ -n "$prev" ] || inv core.plugin.configure "{\"id\":\"artyficial.herdr\",\"digest\":\"$digest\",\"configuration\":{}}" >/dev/null
+  inv core.plugin.enable "{\"package\":\"herdr-console\",\"digest\":\"$digest\",\"allow_unsigned\":true}" >/dev/null
+  # Read the whole catalog before grep: grep -q would close the pipe early, and under
+  # pipefail a large catalog would then fail with SIGPIPE even though it matched.
+  served() { local out; out="$("$rt" capability ${a[@]+"${a[@]}"} list 2>/dev/null)" || return 1; grep -q 'artyficial\.herdr\.console' <<<"$out"; }
+  for _ in $(seq 1 100); do
+    served && break
+    sleep 0.2
+  done
+  served || { echo "artyficial.herdr.console did not appear; see core.plugin.logs" >&2; exit 1; }
+  inv core.plugin.logs '{"id":"artyficial.herdr"}' | jq -r .text | tail -3
+  echo "installed artyficial.herdr $digest"
+  ;;
+remove)
+  inv core.plugin.disable '{"id":"artyficial.herdr"}' >/dev/null || true
+  inv core.plugin.remove '{"id":"artyficial.herdr","retain_data":true}' >/dev/null
+  echo "removed artyficial.herdr"
+  [ "$purge" = 1 ] || echo "its data, packages and locks stay in $state/plugins until you run remove --purge"
+  if [ "$purge" = 1 ]; then
+    if curl -fsS -o /dev/null "${addr:-http://localhost:$(sed -n 's/^PORT=//p' .env | head -1)}/healthz" 2>/dev/null; then
+      echo "the server is running: --purge only deletes files core no longer uses, so it is safe, but stop it first to be sure" >&2
+    fi
+    rm -rf "$state/plugins/data/artyficial.herdr" "$state/plugins/state-locks/artyficial.herdr" "$state"/data/packages/herdr-console*
+    rm -rf "$state/plugins/staging/herdr-console"
+    # packages/<digest>/ holds only this Plugin's builds when it carries our manifest
+    for d in "$state"/plugins/packages/*/; do
+      [ -f "${d}manifest.json" ] && jq -e '.id == "artyficial.herdr"' "${d}manifest.json" >/dev/null 2>&1 && rm -rf "$d"
+    done
+    echo "purged"
+  fi
+  ;;
+esac

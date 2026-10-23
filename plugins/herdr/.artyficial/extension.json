@@ -1,0 +1,34 @@
+{
+  "name": "artyficial.herdr",
+  "displayName": "herdr console",
+  "kind": "plugin",
+  "subtype": "console",
+  "description": "Drive your herdr sessions (coding agents in a terminal multiplexer) from the pill of an RT Station Workspace: pick a session or start one, talk to it, and let it change the page you look at with patch blocks.",
+  "publisher": {
+    "name": "Artyficial"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/ndendic/official-artyficial",
+  "homepage": "https://github.com/ndendic/official-artyficial/tree/main/plugins/herdr",
+  "tags": [
+    "herdr",
+    "agents",
+    "console",
+    "pill",
+    "claude",
+    "codex",
+    "pi"
+  ],
+  "readme": "README.md",
+  "icon": ".artyficial/icon.png",
+  "platform": {
+    "min": "1.0.0",
+    "max_exclusive": "2.0.0"
+  },
+  "manifest": "manifest.template.json",
+  "version": "1.1.0",
+  "requires": [],
+  "screenshots": [
+    ".artyficial/screenshot-1.png"
+  ]
+}

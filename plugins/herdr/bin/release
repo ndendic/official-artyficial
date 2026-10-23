@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# Build the herdr console Plugin and pack it as a Package Archive for a GitHub Release.
+#
+#   bin/release [--rt BIN]
+#
+# Environment: GOOS, GOARCH   the target (default linux/amd64)
+#              DATA_START_DIR a data-start checkout, when it is not beside this repository
+#              RT             the rt binary (default: rt on PATH)
+#
+# Writes package/ (go run build.go: the provider, manifest.json, THIRD_PARTY_NOTICES) and
+# dist/artyficial.herdr-<version>-<os>-<arch>.tar.gz (rt package pack), then prints the archive's sha256 and size. Attach that one file to the
+# release tagged artyficial.herdr--v<version>: the Space takes the first .tar.gz asset.
+#
+# Needs go, jq, the RT Station Go SDK (not public yet: see README.md) and an rt built from
+# current RT Station source that has "rt package pack" (no public release has it yet;
+# check with "rt package help").
+set -euo pipefail
+
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+rt="${RT:-rt}"
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --rt) rt="$2"; shift 2 ;;
+    -h|--help) sed -n 2,16p "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *) echo "unknown argument: $1 (see bin/release --help)" >&2; exit 2 ;;
+  esac
+done
+goos="${GOOS:-linux}" goarch="${GOARCH:-amd64}"
+
+for tool in go jq; do
+  command -v "$tool" >/dev/null || { echo "$tool is required" >&2; exit 1; }
+done
+command -v "$rt" >/dev/null || { echo "no rt binary ($rt): install RT Station or pass --rt BIN" >&2; exit 1; }
+if ! "$rt" package help 2>&1 | grep -q 'pack DIR'; then
+  echo "$rt has no \"rt package pack\": no public release has it yet; build rt from current RT Station source and pass --rt BIN" >&2
+  exit 1
+fi
+
+cd "$here"
+version="$(jq -r .version manifest.template.json)"
+[ -n "$version" ] && [ "$version" != null ] || { echo "manifest.template.json has no version" >&2; exit 1; }
+
+# build.go runs on this machine and builds the provider for GOOS/GOARCH.
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+env -u GOOS -u GOARCH go build -o "$tmp/build" build.go
+rm -rf package
+GOOS="$goos" GOARCH="$goarch" CGO_ENABLED=0 "$tmp/build"
+
+mkdir -p dist
+out="dist/artyficial.herdr-$version-$goos-$goarch.tar.gz"
+rm -f "$out" # rt package pack never overwrites
+"$rt" package pack package --out "$out"
+
+if command -v sha256sum >/dev/null; then sum="$(sha256sum "$out" | cut -d' ' -f1)"; else sum="$(shasum -a 256 "$out" | cut -d' ' -f1)"; fi
+size="$(wc -c <"$out" | tr -d ' ')"
+echo "archive $out"
+echo "sha256  $sum"
+echo "size    $size bytes"
