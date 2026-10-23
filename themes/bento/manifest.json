@@ -1,0 +1,32 @@
+{
+	"name": "bento",
+	"version": "1.0.4",
+	"kind": "theme",
+	"title": "Bento",
+	"description": "The default, neutral personality: cool fog grounds, Paper White cards, Console Black as the inverse surface and Signal Coral, with white ink on the signal fill.",
+	"entry": "bento.css",
+	"preview": null,
+	"datastart": {
+		"min": "0.20.1"
+	},
+	"modes": [
+		"day",
+		"night"
+	],
+	"faces": [
+		"Albert Sans",
+		"Big Shoulders Display",
+		"JetBrains Mono"
+	],
+	"license": "MIT",
+	"files": {
+		".artyficial/extension.json": "sha256:b3721694cb9e74e57854be399ad18477521d996e918f4c084ecb80e03689ee8b",
+		".artyficial/screenshot-day.webp": "sha256:404f191996a84e9809d6c11568510fa21ae18a863e4b88f4089b0cd79ea0b4aa",
+		".artyficial/screenshot-night.webp": "sha256:24a1af6c16fe0371c26bf02d09535c20ffb040613835253fa9c2a533f78d4f61",
+		"LICENSE": "sha256:b23a1e727268b4e1da945af882c0e6a86cf056c3f68ff86527c0bfdb65aecf89",
+		"README.md": "sha256:371cd502038639c48a8130b2f2326c89dc7f53c855db8e503c84e15c64af28fa",
+		"bento.css": "sha256:372967e72b278f14ed3898d17cf95db4619d67fd7c54bdce620e9133f4be952a",
+		"bento.default.css": "sha256:653dbad9615acdbb9688705fb76828cd02564b9a67f0c5e8c4cbc2d9774ac393",
+		"bento.src.css": "sha256:3afc5f0a2f5f4b25d48ff6594806be1007b6921cf6703859edabd3bb68a633ef"
+	}
+}

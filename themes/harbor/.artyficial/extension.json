@@ -1,0 +1,29 @@
+{
+  "name": "harbor",
+  "displayName": "Harbor",
+  "kind": "theme",
+  "version": "1.0.4",
+  "description": "Cool and technical: blue-slate grounds, a deep blue signal with white ink, a cyan accent, an all-cool chart palette and instrument figures in the mono face.",
+  "publisher": {
+    "name": "Artyficial",
+    "url": "https://github.com/ndendic/official-artyficial"
+  },
+  "repository": "https://github.com/ndendic/official-artyficial",
+  "license": "MIT",
+  "tags": [
+    "theme",
+    "cool",
+    "technical",
+    "blue"
+  ],
+  "screenshots": [
+    ".artyficial/screenshot-day.webp",
+    ".artyficial/screenshot-night.webp"
+  ],
+  "readme": "README.md",
+  "platform": {
+    "min": "0.20.1",
+    "max_exclusive": null
+  },
+  "manifest": "manifest.json"
+}

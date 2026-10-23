@@ -1,0 +1,1521 @@
+/* _shell.css: the Ribbon & Sheet shell (@layer shell), linked by index.html.
+ *
+ * THREE SURFACES, TWO FUSIONS. A slim RIBBON of icons (the deepest tone); the
+ * PANEL it opens (the sidebar, on the desk tone); and the SHEET (the work,
+ * the lightest). The active ribbon icon sits on a tab of the panel, and the
+ * current page row sits on a tab of the sheet: each tab takes the colour of
+ * the surface it fuses into, with inverse-corner flares where they join.
+ * Collapsing folds the panel away completely: the desk slides over it until
+ * the sheet meets the ribbon. Built on concept-dashboard's Desk & Lens.
+ *
+ * Motion moves transform, opacity, filter and clip-path only. Layout commits
+ * once per toggle; plugins/deck.js springs the transforms around that commit.
+ */
+@layer shell {
+	/* ── THE SHELL TOKEN BLOCK: every colour of the shell, mapped onto roles ── */
+	body {
+		--deck-gap: 8px;
+		--deck-radius: 14px;
+		--ribbon-w: 52px;
+		--side-w: 264px;
+		--rail-w: 0px;              /* collapsed = gone: no icon rail, the ribbon is the rail */
+		--insp-w: 296px;
+		--bar-h: 52px;
+		--top-h: 52px;
+		--canvas-x: 24px;
+		--tab-r: 9px;
+		--panel-r: 12px;
+		--flare-r: 12px;
+		--rt-sidebar-width: var(--side-w);
+		--rt-sidebar-width-icon: var(--rail-w);
+
+		/* THE RAMP: three tones, one clear step apart (ribbon → panel → sheet).
+		   Each fused tab takes the colour of the surface it runs into. */
+		--ribbon: color-mix(in oklab, var(--rt-background) 80%, var(--rt-foreground));
+		--ribbon-ghost: color-mix(in oklab, var(--rt-foreground) 8%, transparent);
+		--ribbon-line: color-mix(in oklab, var(--rt-foreground) 11%, transparent);
+		--desk: color-mix(in oklab, var(--rt-background) 91.5%, var(--rt-foreground));
+		--panel: var(--desk);
+		--sheet: var(--rt-background);
+		--sheet-edge: color-mix(in oklab, var(--rt-border) 70%, transparent);
+		/* no ring and no tight shadow: either would draw a line exactly where a
+		   tab fuses into the sheet; the desk/sheet tone step is the edge. The
+		   spread outruns the blur's whole Gaussian tail (about 1.5x the blur
+		   radius), so the shadow only reaches out BELOW the sheet: at -24px it
+		   leaked a few px past the side edges and painted a faint darker seam
+		   over the row tab and the inspector's card tab (light only). */
+		--sheet-shadow: 0 26px 28px -44px color-mix(in srgb, var(--rt-foreground) 24%, transparent);
+		--sheet-tint: color-mix(in oklab, var(--rt-muted) 55%, var(--sheet));
+		--lens: var(--rt-card);
+		--lens-ring: color-mix(in oklab, var(--rt-border) 90%, transparent);
+		--lens-shadow: 0 1px 2px color-mix(in srgb, var(--rt-foreground) 7%, transparent),
+			0 2px 6px -2px color-mix(in srgb, var(--rt-foreground) 8%, transparent);
+		--lens-ghost: color-mix(in oklab, var(--lens) 55%, transparent);
+		--lens-notch: var(--rt-signal);
+		--ink: var(--rt-sidebar-foreground);
+		--ink-quiet: var(--rt-muted-foreground);
+		--fly-ground: var(--rt-popover, var(--rt-card));
+
+		/* named curves */
+		--ease-arrive: cubic-bezier(0.23, 1, 0.32, 1);
+		--ease-move: cubic-bezier(0.77, 0, 0.175, 1);
+		/* leaving is an ease-out too (the drawer curve): an exit that starts slow
+		   holds the old state on screen at the very moment the user acted */
+		--ease-leave: cubic-bezier(0.32, 0.72, 0, 1);
+		--ease-tint: ease;
+		/* critically damped springs, response 0.36 s / 0.30 s, from rest */
+		--spring-deck: linear(0, 0.078 6.2%, 0.233 12.5%, 0.399 18.8%, 0.547 25%, 0.667 31.2%, 0.76 37.5%, 0.83 43.8%, 0.881 50%, 0.917 56.2%, 0.943 62.5%, 0.961 68.8%, 0.973 75%, 0.982 81.2%, 0.988 87.5%, 0.992 93.8%, 1);
+		--spring-lens: linear(0, 0.074 6.2%, 0.224 12.5%, 0.386 18.8%, 0.531 25%, 0.652 31.2%, 0.746 37.5%, 0.817 43.8%, 0.87 50%, 0.909 56.2%, 0.936 62.5%, 0.956 68.8%, 0.97 75%, 0.979 81.2%, 0.986 87.5%, 0.99 93.8%, 1);
+		--t-deck: 420ms;
+		--t-lens: 340ms;
+
+		--pin-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 17v5'/%3E%3Cpath d='M9 10.8a2 2 0 0 1-1.1 1.8l-1.8.9A2 2 0 0 0 5 15.2V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.8a2 2 0 0 0-1.1-1.8l-1.8-.9A2 2 0 0 1 15 10.8V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z'/%3E%3C/svg%3E");
+		--set-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+		--dk-ease-tab: linear(0, 0.057, 0.19, 0.356, 0.524, 0.676, 0.802, 0.899, 0.969, 1.015, 1.041, 1.052, 1.054, 1.049, 1.041, 1.032, 1.023, 1.015, 1.009, 1.004, 1.001, 0.999, 0.998, 0.997, 1);
+		--dk-ease-glide: linear(0, 0.051, 0.169, 0.315, 0.464, 0.6, 0.716, 0.81, 0.882, 0.935, 0.972, 0.996, 1.01, 1.017, 1.02, 1.019, 1.017, 1.015, 1.012, 1.009, 1.006, 1.004, 1.003, 1.002, 1);
+
+		background: var(--desk);
+	}
+	/* dark: the sheet is LIGHTER than the desk (elevation = a lightness step),
+	   no shadow; a top-inner highlight catches the edge instead */
+	body.theme-dark {
+		/* the night ramp is spaced by luminance, not by oklab lightness: near
+		   black, equal L steps all but vanish on a real display (round 4 measured
+		   1.04:1 between ribbon and panel). Ribbon ≈ black (25% of the ground),
+		   panel = the ground, sheet = the ground lifted 8% toward white: about
+		   1.14:1 then 1.17:1, so both fusions read. Inside the sheet the cards
+		   are lifted with it (.sheet below), one step above it. */
+		/* the floor is the personality's own deep ink (theme.css, --ribbon-floor):
+		   Bento's is black, Harbor's a deep navy, Folio's a warm ink, so each
+		   rail keeps its personality's temperature at night */
+		--ribbon: color-mix(in oklab, var(--rt-background) 25%, var(--ribbon-floor, black));
+		--ribbon-ghost: color-mix(in oklab, white 7%, transparent);
+		--ribbon-line: color-mix(in oklab, white 9%, transparent);
+		/* how far the desk and the sheet lift toward white are two optional theme roles,
+		   --desk-lift (4%) and --sheet-lift (11%): a near-black theme sets less, so it stays black
+		   (round 4b: the panel lifted 4% off the ground so the ribbon → panel
+		   step reads as clearly as panel → sheet: about 1.19:1 each) */
+		--desk: color-mix(in oklab, var(--rt-background), white var(--desk-lift, 4%));
+		--sheet: color-mix(in oklab, var(--rt-background), white var(--sheet-lift, 11%));
+		--sheet-edge: color-mix(in oklab, white 7%, transparent);
+		--sheet-shadow: 0 0 0 0 transparent;
+		--lens: color-mix(in oklab, var(--rt-card) 88%, white);
+		--lens-ring: color-mix(in oklab, white 9%, transparent);
+		--lens-shadow: 0 0 0 0 transparent;
+		--lens-ghost: color-mix(in oklab, white 5%, transparent);
+		--sheet-tint: color-mix(in oklab, var(--rt-muted) 45%, var(--sheet));
+	}
+	@media (prefers-contrast: more) {
+		body { --sheet-edge: var(--rt-border); --lens-ring: var(--rt-border); }
+	}
+	/* the title face: the UI face, except where a personality has a display
+	   voice meant for headings. Folio (theme.css) is editorial: its page title
+	   and the sheet's section headings are set in its hero face, Libron */
+	body { --title-face: var(--rt-font); }
+	[data-theme="folio"] body { --title-face: var(--rt-font-display); }
+	/* the figure face: the voice of the page's hero numbers (KPI values, a
+	   donut's total). Bento: the UI face. Folio: its reading and title face,
+	   Libron. Harbor: its instrument mono (theme.css, --font-figure). Always
+	   tabular lining numerals, so a changing value never shifts its row */
+	body { --figure-face: var(--font-figure, var(--rt-font)); --figure-weight: var(--rt-weight-semibold); --figure-tracking: -0.01em; }
+	[data-theme="folio"] body { --figure-face: var(--rt-font-display); --figure-weight: 600; --figure-tracking: -0.012em; }
+	[data-theme="harbor"] body { --figure-weight: 500; --figure-tracking: -0.045em; }
+	[data-theme="folio"] .sheet #main :is(h2, h3) { font-family: var(--title-face); font-weight: var(--rt-weight-display, 600); letter-spacing: -0.005em; }
+
+	/* ── the desk ── */
+	html, body { overflow: clip; }
+	/* kerning on everywhere: headless captures otherwise space some pairs apart */
+	body { margin: 0; color: var(--rt-foreground); font-kerning: normal; text-rendering: optimizeLegibility; }
+
+	/* the column: transparent on the desk, below the sheet, never animating its
+	   width (the library's inline-size / margin transitions are ours to drive) */
+	#shell-sidebar:not([data-layout="mobile"]) > nav {
+		z-index: 1;
+		background: transparent;
+		box-shadow: none;
+		transition: none;
+	}
+	#shell-sidebar + .shell-inset { transition: none; }
+	.shell-inset.deck {
+		position: relative;
+		z-index: 2;
+		display: flex;
+		flex-direction: column;
+		box-sizing: border-box;
+		block-size: 100dvh;
+		min-inline-size: 0;
+		/* --fold-q: 0 open, 1 folded. Folded, the middle layer is gone
+		   completely: no gutter on any side, so the sheet covers the whole
+		   window right of the ribbon. In flight deck.js writes it every frame
+		   from the fold's one value; at rest the class below holds it */
+		--fold-q: 0;
+		--deck-pad: calc(var(--deck-gap) * (1 - var(--fold-q)));
+		padding: var(--deck-pad) var(--deck-pad) var(--deck-pad) 0;
+	}
+	@media (min-width: 768px) { body.deck-folded .shell-inset.deck { --fold-q: 1; } }
+	.deck-row {
+		position: relative;
+		display: flex;
+		flex: 1 1 auto;
+		gap: 0;
+		min-block-size: 0;
+		min-inline-size: 0;
+	}
+
+	/* ── the sheet ── */
+	.sheet {
+		position: relative;
+		z-index: 1;
+		display: flex;
+		flex: 1 1 auto;
+		flex-direction: column;
+		min-inline-size: 0;
+		min-block-size: 0;
+		overflow: clip;  /* not a scroll container: a focus inside can never scroll it */
+		border-radius: calc(var(--deck-radius) * (1 - var(--fold-q, 0)));
+		background: var(--sheet);
+		box-shadow: var(--sheet-shadow);
+	}
+	body.theme-dark .sheet { box-shadow: inset 0 1px 0 var(--sheet-edge); }
+	/* folded, the sheet runs to the window's top edge: a highlight there would
+	   be a stray line across the top of the screen, so it leaves with the gutter */
+	@media (min-width: 768px) { body.theme-dark.deck-folded .sheet { box-shadow: none; } }
+	/* by night the sheet is lifted off the ground: anything inside it that paints
+	   the ground itself (sticky heads, wells) paints the sheet instead */
+	/* The library re-binds the whole --rt-* bridge on .doc and .reading trays
+	   (back to the ground), which would sink a doc page's cards BELOW the sheet
+	   by night; the trays take the same rebind. */
+	body.theme-dark :is(.sheet, .sheet :is(.doc, .reading)) {
+		--rt-background: var(--sheet);
+		/* and its cards keep their step of elevation above it */
+		--rt-card: color-mix(in oklab, var(--sheet) 94%, white);
+	}
+	/* the library's bridge re-binds --rt-card on every rocket host from
+	   --bg-elevated, so a chart inside a lifted card took the ground's card
+	   tone: the donut's 3px segment gaps (drawn in --rt-card) read as a dark
+	   ring around it by night. A host inside the sheet keeps the tone it sits on. */
+	body.theme-dark .sheet [data-rocket-host]:not(.black, .ink) { --rt-card: inherit; }
+	/* the sheet's three layers share one cell: the canvas runs the full height
+	   and the titlebar and the bar float over it as transparent surfaces */
+	.sheet { display: grid; grid-template: 100% / 100%; }
+	.sheet > * { grid-area: 1 / 1; }
+	.sheet > .main {
+		display: flex;
+		flex-direction: column;
+		min-block-size: 0;
+		min-inline-size: 0;
+	}
+	.sheet .canvas-scroll {
+		position: relative;
+		flex: 1 1 auto;
+		min-block-size: 0;
+		/* the last row always scrolls clear of the pill */
+		padding: 0 var(--canvas-x) calc(var(--bar-h) + 36px);
+		overflow-y: auto;
+		contain: paint;
+		view-transition-name: sheet-content;
+		scrollbar-width: thin;
+		scroll-padding-block: calc(var(--top-h) + 8px) calc(var(--bar-h) + 8px);
+		scroll-timeline: --sheet-scroll y;
+	}
+
+	/* the titlebar: a transparent row over the canvas. It holds the fold
+	   trigger and the tools; the title docks into it on scroll (below).
+	   Only its controls take the pointer, so the canvas scrolls under it. */
+	.sheet > .shell-top {
+		position: relative;
+		z-index: 4;
+		align-self: start;
+		gap: 6px;
+		block-size: var(--top-h);
+		padding-inline: 10px 10px;
+		background: transparent;
+		pointer-events: none;
+	}
+	.sheet > .shell-top > * { pointer-events: auto; }
+	.sheet > .shell-top > .shell-top-fill { flex: 1; pointer-events: none; }
+	/* THE VEIL: the titlebar's material, inside the scroller so the docked
+	   title can sit ON it. A sticky strip of the titlebar's height: clear at
+	   the top of the page; as content scrolls beneath it turns into the sheet
+	   at 75% with a 20px blur and no saturation boost, so what passes under
+	   stays legible but quiet: at 70%/16px/saturate 1.2 a chart's saturated
+	   strokes (the donut, the area fill) glowed through as coloured smears
+	   behind the docked title, by night most of all.
+	   Its lower edge is feathered over the last 10px of the blur (no band). */
+	.sheet-veil {
+		position: sticky;
+		top: 0;
+		z-index: 2;
+		block-size: var(--top-h);
+		margin: 0 calc(-1 * var(--canvas-x)) 12px;
+		pointer-events: none;
+		background: color-mix(in oklab, var(--sheet) 75%, transparent);
+		-webkit-backdrop-filter: blur(20px);
+		backdrop-filter: blur(20px);
+		-webkit-mask: linear-gradient(#000 calc(100% - 10px), transparent);
+		mask: linear-gradient(#000 calc(100% - 10px), transparent);
+		opacity: 0;
+		animation: veil-in linear both;
+		animation-timeline: --sheet-scroll;
+		animation-range: 0 24px;
+	}
+	@media (max-width: 900px) { body { --canvas-x: 16px; } }
+	@keyframes veil-in { to { opacity: 1; } }
+	html.no-sda .sheet-veil { animation: none; transition: opacity 160ms var(--ease-tint); }
+	html.no-sda .sheet.scrolled .sheet-veil { opacity: 1; }
+
+	/* THE TITLE LINE and its dock. The line is sticky at the scroller's top;
+	   it reaches that top exactly when the page has scrolled --dock-d (its own
+	   offset), and over that same distance a scroll-driven animation carries
+	   the h1 to the titlebar slot beside the trigger (--dock-x/-y) at the
+	   titlebar's size (--dock-k). deck.js measures the path at rest. The
+	   eyebrow leaves on the first half. Scrolling back runs it backwards:
+	   it is the same element, so the title is never shown twice. */
+	.page-mark { display: block; block-size: 0; }
+	.page-head {
+		position: sticky;
+		top: 0;
+		z-index: 3;
+		display: grid;
+		gap: 4px;
+		margin: 0 0 20px;
+		padding-inline: var(--head-x, 0px);
+		pointer-events: none;
+	}
+	.page-head :is(a, button) { pointer-events: auto; }
+	.page-eyebrow { min-block-size: 16px; }
+	.page-eyebrow ol { flex-wrap: nowrap; }
+	.page-eyebrow, .page-eyebrow :is(a, button, span, li) { color: var(--rt-muted-foreground); font-size: var(--rt-text-xs); }
+	.page-eyebrow .rt-btn { block-size: 18px; margin-inline-start: -6px; padding-inline: 6px; }
+	.page-head h1 {
+		inline-size: fit-content;
+		max-inline-size: var(--dock-maxw, 100%);
+		margin: 0;
+		overflow: hidden;
+		font-family: var(--title-face);
+		font-size: 26px;
+		font-weight: var(--rt-weight-semibold);
+		line-height: 1.15;
+		letter-spacing: -0.01em;
+		text-overflow: ellipsis;
+		text-transform: none;
+		white-space: nowrap;
+		transform-origin: 0 0;
+	}
+	html.dock-ready .page-head h1 {
+		animation: dock-title linear both;
+		animation-timeline: --sheet-scroll;
+		animation-range: 0 var(--dock-d, 60px);
+	}
+	html.dock-ready .page-eyebrow {
+		animation: dock-eyebrow linear both;
+		animation-timeline: --sheet-scroll;
+		animation-range: 0 calc(var(--dock-d, 60px) * 0.5);
+	}
+	@keyframes dock-title { to { translate: var(--dock-x, 0px) var(--dock-y, 0px); scale: var(--dock-k, 1); letter-spacing: 0; } }
+	@keyframes dock-eyebrow { to { opacity: 0; translate: 0 -6px; visibility: hidden; } }
+	/* without scroll-driven animations: the same path as a short transition,
+	   flipped by an IntersectionObserver at the moment the line sticks */
+	html.no-sda.dock-ready .page-head h1, html.no-sda.dock-ready .page-eyebrow { animation: none; transition: translate 260ms var(--ease-move), scale 260ms var(--ease-move), opacity 160ms var(--ease-tint); }
+	html.no-sda .sheet.docked .page-head h1 { translate: var(--dock-x) var(--dock-y); scale: var(--dock-k); }
+	html.no-sda .sheet.docked .page-eyebrow { opacity: 0; visibility: hidden; }
+	/* reduced motion: nothing travels. The line fades out where it is, moves
+	   while unseen, and fades in already docked (and the fallback just cuts) */
+	@keyframes dock-title-rm {
+		0% { opacity: 1; translate: 0 0; scale: 1; }
+		35% { opacity: 0; translate: 0 0; scale: 1; }
+		85% { opacity: 0; translate: var(--dock-x, 0px) var(--dock-y, 0px); scale: var(--dock-k, 1); }
+		100% { opacity: 1; translate: var(--dock-x, 0px) var(--dock-y, 0px); scale: var(--dock-k, 1); letter-spacing: 0; }
+	}
+	@keyframes dock-eyebrow-rm { 0% { opacity: 1; } 35%, 100% { opacity: 0; visibility: hidden; } }
+	@media (prefers-reduced-motion: reduce) {
+		html.dock-ready .page-head h1 { animation-name: dock-title-rm; }
+		html.dock-ready .page-eyebrow { animation-name: dock-eyebrow-rm; animation-range: 0 var(--dock-d, 60px); }
+		html.no-sda.dock-ready :is(.page-head h1, .page-eyebrow) { transition: none; }
+	}
+	/* a document page's tray brings its own top margin */
+	.page-head:has(~ #main:is(.doc, .reading)) { margin-block-end: 0; }
+	/* a card placed as a doc section: the doc measure (`.doc > section > *`,
+	   720px centred) must not reach into it, or its header and body sit as a
+	   centred column 137px in from the card's own padding. The card is the
+	   object; its parts fill it. */
+	#main.doc > section.rt-card > * { inline-size: auto; margin-inline: 0; }
+	#main.doc > section.rt-card :where(p) { max-inline-size: var(--doc-text, 720px); text-wrap: pretty; }   /* prose keeps its measure, left-aligned */
+	/* a run of keys ("[ or ]") never breaks across lines: Chromium breaks beside
+	   an inline-block kbd even at a no-break space, which left "]" alone on a line */
+	#main .keys { white-space: nowrap; }
+	/* a control group standing on the sheet itself (the page tools): its track
+	   is a tint of the ink, so it reads on the sheet in both modes (the stock
+	   track is the sheet's own tone by night and all but vanishes) */
+	#main .rt-toggle-group:not(.rt-card *) { background: color-mix(in oklab, var(--rt-foreground) 7%, transparent); }
+	/* a search field's clear button: Chromium's stock one is a blue glyph from
+	   no palette; it becomes an x in the field's own muted ink, the ink on hover */
+	#main input[type="search"]::-webkit-search-cancel-button {
+		-webkit-appearance: none; appearance: none;
+		inline-size: 16px; block-size: 16px; margin-inline-start: 6px;
+		background-color: var(--rt-muted-foreground); cursor: pointer;
+		-webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 4l8 8M12 4l-8 8' stroke='%23000' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") center / 14px no-repeat;
+		mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 4l8 8M12 4l-8 8' stroke='%23000' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") center / 14px no-repeat;
+	}
+	#main input[type="search"]::-webkit-search-cancel-button:hover { background-color: var(--rt-foreground); }
+	/* the trigger's divider line slides with the state */
+	.deck-trigger .deck-divider { transition: translate 240ms var(--ease-move); }
+	#shell-sidebar[data-state="collapsed"]:not([data-layout="mobile"]) ~ .deck .deck-trigger .deck-divider { translate: -3px 0; }
+	.deck-insp-btn .deck-insp-fill { opacity: 0; transition: opacity 160ms var(--ease-tint); }
+	body.insp .deck-insp-btn .deck-insp-fill { opacity: 0.18; }
+	body.insp .shell-top [data-shell-inspector] { background: transparent; color: inherit; }
+
+	/* ── the header strip (#header): unfurls under the titlebar ── */
+	#header {
+		position: sticky;
+		top: var(--top-h);
+		z-index: 2;
+		margin: -4px 0 12px;
+		padding: 10px 14px;
+		border-radius: 10px;
+		background: var(--sheet-tint);
+		font-size: var(--rt-text-sm);
+	}
+	#header:empty, #rail:empty, #navigation:empty, #aside:empty, #footer:empty, #layer:empty, #pill-console:empty { display: none; }
+	/* ── THE INSPECTOR: the sidebar's mirror on the right ──
+	   No card of its own and no gap: it is a column of the desk (the panel
+	   tone) and the sheet's right edge IS its edge, exactly as the sidebar
+	   meets the sheet on the left. The selected card sits on a piece of sheet
+	   (.pin-tab) that runs into the sheet with mirrored flares. Opening and
+	   closing move ONE value, the column's visible width (deck.js), so the
+	   sheet's edge glides and the content reflows with it every frame. */
+	.deck-row > .inspector {
+		position: relative;
+		z-index: 0;
+		display: flex;
+		flex: none;
+		flex-direction: column;
+		inline-size: var(--insp-w);
+		min-block-size: 0;
+		margin-inline-end: calc(-1 * var(--insp-w));
+		overflow: clip;  /* not a scroll container: a focus inside can never scroll it */
+		visibility: hidden;
+		background: transparent;
+		color: var(--ink);
+		transition: none;
+	}
+	body.insp .deck-row > .inspector,
+	.deck-row > .inspector.deck-leaving, body.insp-fly .deck-row > .inspector { visibility: visible; }
+	body.insp .deck-row > .inspector { margin-inline-end: calc(-1 * var(--deck-pad, var(--deck-gap))); }
+	/* (the library fixes the inner column at 300px; the cards run its full
+	   width to the window's gutter, mirroring the sidebar's rows) */
+	.shell-body.deck-row > .detail.inspector > .detail-inner { inline-size: auto; }
+	.inspector > .detail-inner {
+		position: relative;
+		display: flex;
+		flex: 1 1 auto;
+		flex-direction: column;
+		inline-size: auto;
+		min-block-size: 0;
+		padding-inline-end: var(--deck-pad, var(--deck-gap));
+		overflow-y: auto;
+		overflow-x: clip;
+		scrollbar-width: none;
+	}
+	/* the head: level with the sheet's titlebar, so the first card starts
+	   where the page's content starts */
+	.inspector .detail-head {
+		display: flex;
+		flex: none;
+		align-items: center;
+		gap: 8px;
+		box-sizing: border-box;
+		block-size: 52px;
+		margin: 0;
+		padding: 0 6px 0 16px;
+		border: 0;
+		background: transparent;
+		color: var(--ink);
+		font-size: var(--rt-text-control);
+	}
+	.inspector .detail-head b { font-weight: var(--rt-weight-semibold); }
+	/* L2: in a slide the head is as wide as the column's visible part (deck.js
+	   writes --insp-v), so the close button rides the window's edge, never cut;
+	   the head is unseen until that part is wider than the head itself */
+	body.insp-fly .inspector .detail-head {
+		inline-size: calc(var(--insp-v, 9999) * 1px); max-inline-size: 100%; min-inline-size: 0;
+		overflow: clip; white-space: nowrap;
+		opacity: clamp(0, (var(--insp-v, 9999) - var(--insp-head-min, 150)) / 40, 1);
+	}
+	/* opened by hand with nothing pinned: one quiet line says what it is for */
+	.inspector .insp-empty { display: none; margin: 4px 16px 0; color: var(--ink-quiet); font-size: var(--rt-text-xs); line-height: 1.5; text-wrap: pretty; }
+	.inspector .insp-empty code { padding: 0; background: transparent; color: inherit; font-size: inherit; }
+	body.insp.insp-hand .inspector:not(:has(#aside > :not([data-deck-ghost]))) .insp-empty { display: block; }
+	/* the skip link: focusable at all times (opacity, never visibility), on
+	   screen whole the moment it takes focus, above the ribbon, and gone
+	   without residue when focus moves on */
+	.skip {
+		position: fixed; inset-block-start: 8px; inset-inline-start: 8px; z-index: 200;
+		translate: 0 -4px; transform: none; opacity: 0; pointer-events: none;
+		/* a solid chip (J5): nothing under it ever shows through its words */
+		padding: 7px 12px; border-radius: var(--rt-radius-md, 8px);
+		background: var(--rt-foreground); color: var(--rt-background);
+		font: var(--rt-weight-medium, 500) 13px/1.3 var(--rt-font); text-decoration: none;
+		box-shadow: 0 0 0 2px var(--rt-background), 0 0 0 4px var(--rt-ring), 0 8px 20px -8px rgb(0 0 0 / 0.4);
+		transition: opacity 120ms var(--ease-tint), translate 120ms var(--ease-arrive);
+	}
+	.skip:focus, .skip:focus-visible { translate: 0 0; transform: none; opacity: 1; pointer-events: auto; }
+	.inspector .detail-head > button { margin-inline-start: auto; }
+	/* the cards: agent notes (#aside Patch Region) and pinned answers share
+	   one vocabulary, the sidebar's rows mirrored: flush with the sheet's
+	   edge, no ground of their own; the selected one sits on the tab */
+	#aside { position: relative; z-index: 1; display: flex; flex: none; flex-direction: column; gap: 2px; padding: 0 0 12px; }
+	#aside > :not([data-deck-ghost]) {
+		position: relative;
+		box-sizing: border-box;
+		margin: 0;   /* J3: the column's own end padding (--deck-pad) is the gutter: the card's right edge sits 8px from the window, like the sheet's and the tab under it */
+		padding: 10px 36px 11px 16px;
+		border-radius: 0 var(--tab-r) var(--tab-r) 0;
+		background: transparent;
+		color: var(--ink-quiet);
+		font-size: var(--rt-text-sm);
+		line-height: 1.5;
+		cursor: pointer;
+		outline: none;
+		transition: color 120ms var(--ease-tint);
+	}
+	#aside > :not([data-deck-ghost])::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--lens-ghost); opacity: 0; transition: opacity 160ms var(--ease-tint); }
+	@media (hover: hover) and (pointer: fine) { #aside > :not([aria-current="true"], [data-deck-ghost]):hover::before { opacity: 1; transition-duration: 120ms; } }
+	#aside > :focus-visible { outline: 2px solid var(--rt-ring); outline-offset: -2px; }
+	#aside > [aria-current="true"] { color: var(--rt-foreground); }
+	#aside > * :is(h2, h3, h4, b) { display: block; margin: 0 0 2px; overflow: hidden; color: var(--ink); font-size: var(--rt-text-xs); font-weight: var(--rt-weight-semibold); text-overflow: ellipsis; white-space: nowrap; }
+	#aside > * p { margin: 0; color: inherit; }
+	#aside > [data-pin] p { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+	#aside > [data-pin][aria-current="true"] p { -webkit-line-clamp: 4; }
+	/* a pinned answer wears a pin, so it never reads as an agent's note */
+	#aside > [data-pin] > b { display: flex; align-items: center; gap: 6px; }
+	#aside > [data-pin] > b::before { content: ""; flex: none; inline-size: 12px; block-size: 12px; background: var(--rt-signal); -webkit-mask: var(--pin-icon) center / contain no-repeat; mask: var(--pin-icon) center / contain no-repeat; }
+	#aside .pin-x { position: absolute; inset-block-start: 6px; inset-inline-end: 4px; display: grid; place-items: center; inline-size: 26px; block-size: 26px; padding: 0; border: 0; border-radius: 8px; background: none; color: var(--ink-quiet); cursor: pointer; opacity: .5; transition: opacity 120ms var(--ease-tint), background-color 120ms var(--ease-tint); }
+	#aside .pin-x:hover { background: var(--lens-ghost); }
+	#aside .pin-x svg { inline-size: 14px; block-size: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+	#aside > :is(:hover, :focus-within) .pin-x, #aside .pin-x:focus-visible { opacity: 1; }
+	@media (hover: none) { #aside .pin-x { opacity: 1; } }
+	body:not(.insp) .detail-inner > #aside ~ * { display: none; }
+	.inspector .nav-group { color: var(--ink-quiet); }
+	/* one left edge for the whole column: the head's title, every group label,
+	   the region list and the code cards all start 16px in (they started at
+	   16, 20, 22 and 16px). An empty pin count is not drawn as a blank chip */
+	.pin-tab {
+		position: absolute;
+		inset-block-start: 0;
+		inset-inline-start: 0;
+		z-index: 0;
+		display: block;
+		inline-size: calc(100% - var(--deck-gap));
+		block-size: var(--pin-h, 0px);
+		border-radius: 0 var(--tab-r) var(--tab-r) 0;
+		background: var(--sheet);
+		opacity: 0;
+		pointer-events: none;
+	}
+	body.pin-tab-on .pin-tab { opacity: 1; }
+	body.live .pin-tab { transition: opacity 160ms var(--ease-tint), block-size 220ms var(--ease-arrive); }
+	.pin-flare {
+		position: absolute;
+		inset-block-start: 0;
+		inset-inline-start: 0;
+		z-index: 2;
+		inline-size: var(--flare-r);
+		block-size: var(--flare-r);
+		opacity: 0;
+		pointer-events: none;
+	}
+	.pin-flare-t { background: radial-gradient(circle at 100% 0, transparent calc(var(--flare-r) - 0.5px), var(--sheet) var(--flare-r)); translate: 0 calc(var(--pin-iy, -100px) - var(--flare-r)); }
+	.pin-flare-b { background: radial-gradient(circle at 100% 100%, transparent calc(var(--flare-r) - 0.5px), var(--sheet) var(--flare-r)); translate: 0 calc(var(--pin-iy, -100px) + var(--pin-h, 0px)); }
+	body.pin-tab-on:not(.pin-flare-off) .pin-flare { opacity: 1; }
+	body.live .pin-flare { transition: opacity 120ms var(--ease-tint); }
+	.deck-grab { display: none; }
+
+	/* until rt-chart's code lands, each chart shows its own final drawing,
+	   built by deck.js from its data before the first paint (.deck-chart-preview).
+	   No skeleton, no pulse: a chart with no data yet keeps its box, empty. */
+	.sheet rt-chart:not(:defined) { background: none; opacity: 1; animation: none; }
+	.sheet rt-chart:not(:defined):has(> .deck-chart-preview) { min-block-size: 0; }
+	.sheet rt-chart:not(:defined):not(:has(> .deck-chart-preview)) { visibility: hidden; }
+	.deck-chart-preview { pointer-events: none; }
+	html.rt-cloak .sheet rt-chart:not(:defined):has(> .deck-chart-preview) { visibility: visible; }
+	/* the ribbon lives outside #shell-sidebar on a desktop, so the library's
+	   un-cloak of the sidebar's menus misses its workspace menu: cloaked, the
+	   mark vanished for the first frames of every page, the frames a page
+	   switch's View Transition captures. Its menu stays display:none until defined. */
+	html.rt-cloak #ribbon rt-dropdown-menu:not(:defined) { visibility: visible; }
+	#ribbon rt-dropdown-menu:not(:defined) > :is([data-popover], [role="menu"]) { display: none; }
+	html:not(.deck-settled) .sheet rt-chart, html.deck-reflowing .sheet rt-chart { --rt-dur-move: 0ms; }
+	/* while a width flies the content is faded and #main is held (deck.js,
+	   K2): first at the width it had, then, unseen, at its final width, which
+	   may be wider than the sliding canvas. The canvas never scrolls sideways */
+	html.deck-reflowing .sheet .canvas-scroll { overflow-x: hidden; }
+	html:not(.deck-settled) .sheet .rt-badge { transition: none; }
+	/* a donut's centre figure speaks the UI face, like every other figure on the page */
+	.sheet rt-chart text.rt-chart-total { font-family: var(--figure-face); font-weight: var(--figure-weight); letter-spacing: var(--figure-tracking); font-variant-numeric: lining-nums tabular-nums; }
+
+	/* ── THE BAR: the space at the sheet's foot where the pill lives. No
+	   ground, no border, no divider and no status: the pill alone, centred.
+	   The canvas ends above it, so the pill never covers content; its panels
+	   and the #layer replies are transient overlays. #footer (a Patch Region)
+	   sits quietly to its left only while a producer fills it. ── */
+	.sheet > .sheet-bar {
+		position: relative;
+		z-index: 4;
+		align-self: end;
+		display: flex;
+		pointer-events: none;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		box-sizing: border-box;
+		block-size: var(--bar-h);
+		min-inline-size: 0;
+		padding: 0 16px;
+		background: transparent;
+		color: var(--ink-quiet);
+		font-size: var(--rt-text-xs);
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+	}
+	.sheet-bar :is(.bar-l, .bar-r) { position: relative; z-index: 1; pointer-events: auto; display: flex; align-items: center; gap: 12px; min-inline-size: 0; max-inline-size: calc(50% - 90px); overflow: hidden; padding-block: 4px; transition: opacity 160ms var(--ease-tint); }
+	/* the open pill owns the bar: the footer steps back, never covered */
+	body.pill-crowds .sheet-bar :is(.bar-l, .bar-r) { opacity: 0; transition-duration: 100ms; }
+	.sheet-bar .status-item { display: inline-flex; align-items: center; gap: 6px; min-inline-size: 0; padding: 0; border: 0; color: inherit; }
+	.sheet-bar code { background: transparent; padding: 0; color: inherit; font-size: inherit; }
+	.sheet-bar #footer { gap: 10px; overflow: hidden; color: var(--ink-quiet); text-overflow: ellipsis; }
+	.sheet-bar #footer:empty { display: none; }
+	/* the footer's words start on the content's own edge (the canvas inset) */
+	@media (min-width: 768px) { .sheet > .sheet-bar { padding-inline: 24px; } }
+	.sheet-bar #shell-reconnect { block-size: 22px; color: var(--ink-quiet); }
+	.sheet-bar #shell-reconnect[hidden] { display: none; }
+	/* the bar is transparent all the way down: content scrolls under the pill
+	   (the canvas keeps --bar-h + 36px below its last row, so the end of a
+	   page always rests clear of it). Replies and panels carry their own ground. */
+	.sheet > .main { position: relative; }
+	/* the palette lifts off the page: the page behind it steps back a little */
+	.sheet > .main::before { content: ""; position: absolute; inset: 0; z-index: 3; background: rgb(0 0 0 / 0.07); opacity: 0; pointer-events: none; transition: opacity 160ms var(--ease-tint); }
+	body.theme-dark .sheet > .main::before { background: rgb(0 0 0 / 0.32); }
+	body[data-pill-panel="command"] .sheet > .main::before { opacity: 1; }
+
+	/* ── the panels' rows ── */
+	#shell-sidebar nav [role="group"] { padding: 2px 8px; }
+	#shell-sidebar nav [role="group"] > h3 {
+		block-size: 26px;
+		margin-block-start: 6px;
+		padding-inline: 10px;
+		color: var(--ink-quiet);
+		font-size: 11px;
+		letter-spacing: 0.5px;
+		transition: opacity 120ms var(--ease-leave);
+	}
+	
+	/* rows: quiet ink, no ground; the hover ghost is a pseudo layer (opacity
+	   only), the current row sits under the Lens and only gains weight */
+	#shell-sidebar nav :is(li > a, li > button, li > details > summary),
+	#shell-sidebar nav :is(.shell-brand, #navigation > a) {
+		position: relative;
+		isolation: isolate;
+		min-block-size: 32px;
+		background: transparent;
+		color: var(--ink-quiet);
+		transition: transform var(--rt-dur-press) var(--ease-arrive), color 120ms var(--ease-tint);
+	}
+	#shell-sidebar nav :is(li > a, li > button, li > details > summary, .shell-brand, .shell-account, #navigation > a)::before {
+		content: "";
+		position: absolute;
+		inset: 0;
+		z-index: -1;
+		border-radius: inherit;
+		background: var(--lens-ghost);
+		opacity: 0;
+		transition: opacity 160ms var(--ease-tint);
+	}
+	#shell-sidebar nav :is(li > a, li > button, li > details > summary, .shell-brand, .shell-account, #navigation > a):hover {
+		background: transparent;
+		color: var(--ink);
+	}
+	@media (hover: hover) and (pointer: fine) {
+		#shell-sidebar nav :is(li > a, li > button, li > details > summary, .shell-brand, .shell-account, #navigation > a):hover::before { opacity: 1; transition-duration: 120ms; }
+		#shell-sidebar nav :is(li > a, li > details > summary, #navigation > a)[aria-current="page"]:hover::before { opacity: 0; }
+	}
+	#shell-sidebar nav :is(li > a, li > button, li > details > summary):active:not(:disabled) { transform: scale(0.985); }
+	#shell-sidebar nav :is(li > a, li > button, li > details > summary):focus-visible,
+	#shell-sidebar nav :is(.shell-brand, .shell-account):focus-visible {
+		box-shadow: none;
+		outline: 2px solid var(--rt-ring);
+		outline-offset: -1px;
+	}
+	#shell-sidebar nav :is(li > a, li > details > summary):is([aria-current="page"], [data-active="true"]),
+	#shell-sidebar[data-state="collapsed"] nav li > details:has([aria-current="page"]) > summary {
+		background: transparent;
+		color: var(--ink);
+		font-weight: 550;
+	}
+	#shell-sidebar nav li > :is([aria-current="page"]) > [data-badge] { background: var(--rt-muted); color: var(--rt-muted-foreground); }
+	#shell-sidebar nav :is(li > a, li > details > summary) > [data-badge] {
+		background: transparent;
+		color: var(--ink-quiet);
+		font-weight: var(--rt-weight-medium);
+		padding-inline: 4px;
+	}
+	/* the chevron rotates on the move curve; on hover it nudges toward its next state */
+	#shell-sidebar nav li > details > summary:not([data-tooltip])::after {
+		margin-inline-start: 2px;
+		transition: rotate 200ms var(--ease-move), translate 160ms var(--ease-arrive), opacity 120ms var(--ease-leave);
+	}
+	@media (hover: hover) and (pointer: fine) {
+		#shell-sidebar nav li > details:not([open]) > summary:hover::after { translate: 0 1px; }
+		#shell-sidebar nav li > details[open] > summary:hover::after { translate: 0 -1px; }
+	}
+
+	/* submenus: a guide line grows from the top; children condense with a stagger */
+	#shell-sidebar nav ul ul {
+		position: relative;
+		margin-inline-start: 17px;
+		padding-inline-start: 9px;
+		border: 0;
+	}
+	#shell-sidebar nav ul ul::before {
+		content: "";
+		position: absolute;
+		inset-block: 4px;
+		inset-inline-start: 0;
+		inline-size: 1px;
+		background: var(--rt-border);
+		transform-origin: top;
+		scale: 1 1;
+		transition: scale 200ms var(--ease-arrive), opacity 160ms var(--ease-leave);
+	}
+	#shell-sidebar nav ul ul > li > :is(a, details > summary) { min-block-size: 30px; font-weight: var(--rt-weight-normal); }
+	body.live #shell-sidebar nav details[open] > ul > li {
+		transition: opacity 200ms var(--ease-arrive), translate 200ms var(--ease-arrive);
+	}
+	body.live #shell-sidebar nav details[open] > ul > li:nth-child(2) { transition-delay: 30ms; }
+	body.live #shell-sidebar nav details[open] > ul > li:nth-child(3) { transition-delay: 60ms; }
+	body.live #shell-sidebar nav details[open] > ul > li:nth-child(4) { transition-delay: 90ms; }
+	body.live #shell-sidebar nav details[open] > ul > li:nth-child(5) { transition-delay: 120ms; }
+	body.live #shell-sidebar nav details[open] > ul > li:nth-child(n+6) { transition-delay: 150ms; }
+	@starting-style {
+		body.live #shell-sidebar nav details[open] > ul > li { opacity: 0; translate: 0 -4px; }
+		body.live #shell-sidebar nav details[open] > ul::before { scale: 1 0; }
+	}
+	#shell-sidebar nav details.deck-closing > ul > li { opacity: 0; translate: 0 -2px; transition: opacity 120ms var(--ease-leave), translate 120ms var(--ease-leave); transition-delay: 0ms; }
+	#shell-sidebar nav details.deck-closing > ul::before { scale: 1 0; transition: scale 160ms var(--ease-leave); }
+	#shell-sidebar nav details.deck-closing > summary::after { rotate: -90deg; }
+	/* rows below a disclosure FLIP (deck.js writes the inverted translate) */
+	#shell-sidebar nav .deck-flip { transition: translate 240ms var(--ease-arrive); }
+	.shell-mark { inline-size: 30px; block-size: 30px; border-radius: 9px; font-size: 16px; }
+	/* Pinned (#navigation): a quiet label drawn by CSS when it has links */
+	.deck-pinned { padding-block-start: 6px; }
+	#navigation { display: flex; flex-direction: column; gap: 2px; padding: 0; }
+	#navigation:not(:empty)::before {
+		content: "Pinned";
+		display: flex;
+		align-items: center;
+		block-size: 26px;
+		padding-inline: 10px;
+		color: var(--ink-quiet);
+		font-size: 11px;
+		font-weight: var(--rt-weight-semibold);
+		letter-spacing: 0.5px;
+		text-transform: uppercase;
+	}
+	#navigation > a { display: flex; align-items: center; gap: 10px; padding: 0 10px; border-radius: var(--rt-radius-field); text-decoration: none; font-size: var(--rt-text-control); }
+	#rail { display: flex; flex-wrap: wrap; gap: 4px; padding: 2px 2px 0; }
+
+	/* ════════════════════════════════════════════════════════════════════
+	   SURFACE 1: THE RIBBON. The deepest tone; icons only. The active icon's
+	   tab is a piece of the PANEL running out of the panel's edge, with two
+	   flares (inverse corners) so ribbon and panel read as one cut.
+	   ════════════════════════════════════════════════════════════════════ */
+	.ribbon {
+		position: fixed;
+		inset-block: 0;
+		inset-inline-start: 0;
+		z-index: 3;
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 4px;
+		box-sizing: border-box;
+		inline-size: var(--ribbon-w);
+		/* the mark's centre lines up with the switcher row and the titlebar (34px) */
+		padding: 16px 0 24px 8px;
+		background: var(--ribbon);
+		color: var(--ink-quiet);
+		/* the active icon's tab takes the colour of the surface it fuses into:
+		   the panel while the sidebar is open, the sheet while it is folded.
+		   In flight deck.js writes --rtab-q (0 → 1) from the fold's one value */
+		--rtab-q: 0;
+		--rtab: color-mix(in oklab, var(--sheet) calc(var(--rtab-q) * 100%), var(--panel));
+	}
+	body.deck-folded .ribbon { --rtab-q: 1; }
+	/* folded, the sheet's left corners stay square against the ribbon: the
+	   fold's flight ends at radius 0 and rest must match it (no pop at rest) */
+	@media (min-width: 768px) { body.deck-folded .sheet { border-start-start-radius: 0; border-end-start-radius: 0; } }
+	/* the panel's own top-left and bottom-left radius, drawn in ribbon ink so
+	   the panel reads as a card tucked against the ribbon */
+	.ribbon::before, .ribbon::after {
+		content: "";
+		position: absolute;
+		inset-inline-start: 100%;
+		inline-size: var(--panel-r);
+		block-size: var(--panel-r);
+		pointer-events: none;
+	}
+	/* folded, the panel and the desk's gutter are both gone: the sheet meets
+	   the ribbon edge to edge, so these corners shrink from the panel's 12px
+	   to nothing with the tab's colour (--rtab-q) */
+	.ribbon::before, .ribbon::after { --corner-r: calc(var(--panel-r) * (1 - var(--rtab-q))); inline-size: var(--corner-r); block-size: var(--corner-r); }
+	.ribbon::before { inset-block-start: 0; background: radial-gradient(circle at 100% 100%, transparent calc(var(--corner-r) - 0.5px), var(--ribbon) var(--corner-r)); }
+	.ribbon::after { inset-block-end: 0; background: radial-gradient(circle at 100% 0, transparent calc(var(--corner-r) - 0.5px), var(--ribbon) var(--corner-r)); }
+	.ribbon-set, .ribbon-foot { display: flex; flex-direction: column; gap: 4px; }
+	.ribbon-foot { margin-block-start: auto; align-items: flex-start; }
+	.ribbon-set { margin-block-start: 14px; }
+	.ribbon rt-dropdown-menu { display: block; }
+
+	/* every ribbon control: a 36px square; ink only, the tab is the state */
+	.ribbon :is(.ribbon-btn, .ribbon-mark, .ribbon-avatar) {
+		position: relative;
+		z-index: 1;
+		display: grid;
+		place-items: center;
+		inline-size: 36px;
+		block-size: 36px;
+		margin: 0;
+		padding: 0;
+		border: 0;
+		border-radius: 10px;
+		background: transparent;
+		color: inherit;
+		cursor: pointer;
+		outline: none;
+		-webkit-tap-highlight-color: transparent;
+		transition: color 120ms var(--ease-tint), scale var(--rt-dur-press) var(--ease-arrive);
+	}
+	.ribbon :is(.ribbon-btn, .ribbon-avatar)::before {
+		content: "";
+		position: absolute;
+		inset: 0;
+		z-index: -1;
+		border-radius: inherit;
+		background: var(--ribbon-ghost);
+		opacity: 0;
+		transition: opacity 160ms var(--ease-tint);
+	}
+	@media (hover: hover) and (pointer: fine) {
+		.ribbon :is(.ribbon-btn, .ribbon-avatar):hover { color: var(--ink); }
+		.ribbon :is(.ribbon-btn, .ribbon-avatar):hover::before { opacity: 1; transition-duration: 100ms; }
+		/* the fused icon needs no ghost: it already sits on its tab */
+		.ribbon .ribbon-btn[data-active]:hover::before { opacity: 0; }
+	}
+	.ribbon :is(.ribbon-btn, .ribbon-mark, .ribbon-avatar):active { scale: 0.94; }
+	.ribbon :is(.ribbon-btn, .ribbon-mark, .ribbon-avatar):focus-visible { box-shadow: none; outline: 2px solid var(--rt-ring); outline-offset: -2px; }
+	.ribbon .ribbon-btn svg { inline-size: 18px; block-size: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+	.ribbon .ribbon-btn[data-active] { color: var(--ink); }
+	.ribbon .ribbon-mark { border-radius: 10px; }
+	.ribbon .ribbon-mark .shell-mark { inline-size: 32px; block-size: 32px; border-radius: 9px; font-size: 16px; font-style: normal; }
+	/* by night the library's black tile vanished into the ribbon: the mark
+	   inverts, as it does by day (ink tile, ground letter) */
+	body.theme-dark .ribbon-mark .shell-mark { background: var(--rt-foreground); color: var(--rt-background); }
+	.ribbon .ribbon-avatar .rt-avatar { pointer-events: none; }
+	.ribbon .ribbon-avatar svg { inline-size: 14px; block-size: 14px; fill: none; stroke: currentColor; stroke-width: 2; }
+	.ribbon-badge {
+		position: absolute;
+		inset-block-start: 7px;
+		inset-inline-end: 7px;
+		inline-size: 7px;
+		block-size: 7px;
+		border-radius: 50%;
+		background: var(--rt-signal);
+		box-shadow: 0 0 0 2px var(--ribbon);
+	}
+	.ribbon-btn[data-active] .ribbon-badge { box-shadow: 0 0 0 2px var(--rtab); }
+
+	/* THE RIBBON TAB: the panel's colour under the active icon, from the
+	   icon's left edge to the ribbon's right edge (= the panel's left edge) */
+	.ribbon-tab {
+		position: absolute;
+		inset-block-start: 0;
+		inset-inline: 8px 0;
+		z-index: 0;
+		block-size: 36px;
+		border-radius: 10px 0 0 10px;
+		background: var(--rtab);
+		transform-origin: 100% 50%;
+		pointer-events: none;
+		will-change: translate, scale;
+	}
+	.ribbon-flare {
+		position: absolute;
+		inset-block-start: 0;
+		inset-inline-end: 0;
+		z-index: 0;
+		inline-size: var(--flare-r);
+		block-size: var(--flare-r);
+		pointer-events: none;
+	}
+	.ribbon-flare[data-edge="t"] { background: radial-gradient(circle at 0 0, transparent calc(var(--flare-r) - 0.5px), var(--rtab) var(--flare-r)); }
+	.ribbon-flare[data-edge="b"] { background: radial-gradient(circle at 0 100%, transparent calc(var(--flare-r) - 0.5px), var(--rtab) var(--flare-r)); }
+
+	/* ribbon tooltips: hushed from a press until the pointer leaves, never on
+	   the icon whose panel is open (its panel names it), delayed on the first
+	   hover and instant for neighbours while the ribbon is warm (deck.js) */
+	.ribbon [data-tooltip]:is([data-tip-hush], [aria-expanded="true"])::after { visibility: hidden !important; opacity: 0 !important; transition: none !important; }
+	@media (hover: hover) {
+		.ribbon [data-tooltip]:hover::after { transition-delay: 380ms, 380ms, 380ms, 0s; }
+		.ribbon[data-tip-warm] [data-tooltip]:hover::after { transition-delay: 0s; }
+	}
+	@media (hover: none), (pointer: coarse) { .ribbon [data-tooltip]::after { display: none; } }
+	/* the mark is also its menu's trigger, and the menu renames its anchor:
+	   its tooltip anchors to the menu's box (the same 36px square) instead,
+	   so it sits to the right like every other ribbon tooltip, never on the tile */
+	.ribbon #deck-switch { anchor-name: --deck-mark; }
+	@supports (anchor-name: --a) and (anchor-scope: all) {
+		.ribbon .ribbon-mark[data-tooltip]::after { position-anchor: --deck-mark; }
+	}
+
+	/* the Patch Region rail: a producer's icons, stacked under the sidebar icons */
+	.ribbon #rail { flex-direction: column; flex-wrap: nowrap; gap: 4px; padding: 10px 0 0; margin-block-start: 6px; box-shadow: inset 0 1px 0 var(--ribbon-line); inline-size: 36px; }
+	.ribbon #rail > * { max-inline-size: 36px; }
+
+	/* ════════════════════════════════════════════════════════════════════
+	   SURFACE 2: THE PANEL (the sidebar). Always laid out at full width
+	   beside the ribbon; folding never animates a width: the desk slides over
+	   it and, at rest, it is simply hidden.
+	   ════════════════════════════════════════════════════════════════════ */
+	@media (min-width: 768px) {
+		#shell-sidebar > nav,
+		#shell-sidebar:not([data-layout]) > nav { display: flex; left: var(--ribbon-w); inline-size: var(--side-w); }
+		#shell-sidebar + .shell-inset { margin-left: calc(var(--ribbon-w) + var(--_push, var(--side-w))); }
+		/* folded: the middle layer is GONE. The sheet's left edge meets the
+		   ribbon directly (no gutter, no strip of panel) and the active icon's
+		   tab fuses into the sheet */
+		#shell-sidebar[data-state="collapsed"] + .shell-inset { margin-left: var(--ribbon-w); }
+		#shell-sidebar[data-state="collapsed"] > nav { visibility: hidden; }
+		body.deck-hold #shell-sidebar > nav { visibility: visible; }
+	}
+	/* the library's icon-rail rules (labels fade, groups shut, h3s slide away)
+	   are off: folded means covered, the panel stays whole under the sheet, so
+	   nothing reflows while the desk slides over it */
+	#shell-sidebar[data-collapsible=icon][data-state=collapsed]:not([data-layout=mobile]) nav {
+		& [role=group] > h3 { margin-block-start: 6px; opacity: 1; pointer-events: auto; }
+		& :is(li > a, li > button, li > details > summary) > :is(span, [data-badge]) { opacity: 1; }
+		& :is(li > a, li > details > summary) > [data-badge] { display: inline-block; }
+		& li > details > summary:not([data-tooltip])::after { opacity: 0.7; }
+		& li > details[open] > ul { display: flex; }
+		& li > details:has([aria-current=page]) > summary { background: transparent; color: var(--ink); }
+		/* the workspace switcher and the account row stay whole too (J2: they
+		   vanished in the fold's first frame, leaving an emptied header) */
+		& :is(.shell-brand, .shell-account) > :is(span, svg) { opacity: 1; visibility: visible; }
+	}
+	/* in flight (body.deck-hold) deck.js writes the sheet's left margin from
+	   the fold spring every frame: the sheet's edge glides and the content
+	   reflows with it, so nothing is clipped, frozen or left behind */
+
+	#region-nav > .panels { position: relative; display: flex; flex: 1 1 auto; flex-direction: column; min-block-size: 0; }
+	.panel { position: absolute; inset: 0; display: none; flex-direction: column; min-block-size: 0; }
+	.panel[data-active], .panel.panel-leaving { display: flex; }
+	.panel.panel-leaving { pointer-events: none; }
+	/* across pages the panel's rows ride ABOVE the gliding tab (VT paint order) */
+	@media (min-width: 768px) { .panel[data-active] { view-transition-name: deck-panel; } }
+	@media (max-width: 767.98px) { body > .ribbon { display: none; } }
+	body.live :is(.deck-tab, .deck-flare) { transition: opacity 140ms var(--ease-tint); }
+	body.live.deck-hold :is(.deck-tab, .deck-flare), body.live.deck-scrolling :is(.deck-tab, .deck-flare) { transition: none; }
+	.panel-head {
+		display: flex;
+		flex: none;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+		block-size: 26px;
+		margin-block-start: 8px;
+		padding: 0 18px;
+		box-sizing: border-box;
+	}
+	/* the panel's name is a section label (concept-dashboard's PAGES / ADMIN
+	   voice); its count sits at the right edge, quiet */
+	.panel-head h2 { margin: 0; color: var(--ink-quiet); font-family: var(--rt-font); font-size: 11px; font-weight: var(--rt-weight-semibold); letter-spacing: 0.5px; line-height: 1; text-transform: uppercase; }
+	.panel-head small { color: var(--ink-quiet); font-size: 11px; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+
+	/* ── the column's own rows, shared by every panel: the workspace switcher
+	   on top (its mark is the ribbon's, so mark → name read as one row across
+	   the ribbon/panel cut) and the account card at the foot ── */
+	#region-nav > .deck-ws { flex: none; padding: var(--deck-gap) 8px 0; }
+	#region-nav > .deck-foot { flex: none; padding: 6px 8px 10px; }
+	#region-nav > .deck-foot rt-dropdown-menu { display: block; }
+	#shell-sidebar nav :is(.shell-brand, .shell-account) {
+		position: relative;
+		isolation: isolate;
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		inline-size: 100%;
+		box-sizing: border-box;
+		margin: 0;
+		padding: 0 10px;
+		border: 0;
+		border-radius: var(--rt-radius-field);
+		background: transparent;
+		color: var(--ink);
+		font: inherit;
+		font-size: var(--rt-text-control);
+		font-weight: var(--rt-weight-medium);
+		line-height: var(--rt-leading-tight);
+		text-align: start;
+		white-space: nowrap;
+		overflow: hidden;
+		cursor: pointer;
+		outline: none;
+	}
+	#shell-sidebar nav .shell-brand { block-size: 52px; }
+	#shell-sidebar nav .shell-account { min-block-size: 48px; padding-inline: 8px; }
+	#shell-sidebar nav :is(.shell-brand, .shell-account) > span:not(.rt-avatar) { display: grid; gap: 2px; flex: 1 1 auto; min-inline-size: 0; }
+	#shell-sidebar nav :is(.shell-brand, .shell-account) b { overflow: hidden; color: var(--ink); font-weight: var(--rt-weight-semibold); text-overflow: ellipsis; }
+	#shell-sidebar nav .shell-brand b { font-size: 14px; }
+	#shell-sidebar nav :is(.shell-brand, .shell-account) small { color: var(--ink-quiet); font-size: 11.5px; font-weight: var(--rt-weight-normal); }
+	#shell-sidebar nav :is(.shell-brand, .shell-account) > .deck-updown { flex: none; inline-size: 16px; block-size: 16px; color: var(--ink-quiet); opacity: 0.8; }
+	#shell-sidebar nav :is(.shell-brand, .shell-account)[aria-expanded="true"]::before { opacity: 1; }
+	.panel-scroll {
+		position: relative;
+		display: flex;
+		flex: 1 1 auto;
+		flex-direction: column;
+		min-block-size: 0;
+		overflow-x: hidden;
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		scrollbar-width: none;
+		padding-block-end: 12px;
+	}
+	/* nothing a panel holds may paint onto the panel → sheet seam */
+	.panel { overflow: clip; }
+	.panel-scroll::-webkit-scrollbar { display: none; }
+	.panel-note { margin: 10px 18px 0; color: var(--ink-quiet); font-size: var(--rt-text-xs); line-height: 1.5; }
+
+	/* inbox rows: who · what · when */
+	#shell-sidebar nav .inbox-list > li > a { align-items: flex-start; gap: 10px; min-block-size: 52px; padding-block: 8px; white-space: normal; }
+	.inbox-who { display: grid; place-items: center; flex: none; inline-size: 24px; block-size: 24px; margin-block-start: 1px; border-radius: 7px; background: color-mix(in oklab, var(--rt-foreground) 8%, transparent); color: var(--ink); font: 600 11px/1 var(--rt-font); font-style: normal; }
+	.inbox-who[data-tone="agent"] { background: color-mix(in oklab, var(--rt-signal) 18%, transparent); color: var(--rt-foreground); }
+	.inbox-who[data-tone="warn"] { background: color-mix(in oklab, var(--rt-warning) 26%, transparent); color: var(--rt-foreground); }
+	#shell-sidebar nav .inbox-list > li > a > span { display: grid; gap: 2px; flex: 1 1 auto; min-inline-size: 0; }
+	.inbox-list b { overflow: hidden; color: var(--ink); font-weight: var(--rt-weight-medium); text-overflow: ellipsis; white-space: nowrap; }
+	.inbox-list small { overflow: hidden; color: var(--ink-quiet); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+	.inbox-list time { flex: none; color: var(--ink-quiet); font-size: 11px; font-variant-numeric: tabular-nums; }
+	.inbox-list a[data-unread] b::after { content: ""; display: inline-block; inline-size: 6px; block-size: 6px; margin-inline-start: 6px; border-radius: 50%; background: var(--rt-signal); vertical-align: 2px; }
+
+	/* data rows: icon · base · count */
+	#shell-sidebar nav .data-list > li > :is(a, .data-row) > svg { inline-size: 16px; block-size: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+	#shell-sidebar nav .data-list > li > :is(a, .data-row) > span { flex: 1 1 auto; min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; }
+	#shell-sidebar nav .data-list > li > :is(a, .data-row) > small { flex: none; color: var(--ink-quiet); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+	#shell-sidebar nav .data-list > li > .data-row { display: flex; align-items: center; gap: 10px; min-block-size: 32px; padding: 0 10px; color: var(--ink-quiet); font-size: var(--rt-text-control); }
+	/* a base with no page says so, instead of looking disabled */
+	#shell-sidebar nav .data-list .data-tag { flex: none; padding: 1px 6px; border-radius: 6px; background: color-mix(in oklab, var(--rt-foreground) 6%, transparent); color: var(--ink-quiet); font-size: 10.5px; font-weight: var(--rt-weight-medium); }
+
+	/* settings */
+	.set-seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; margin: 2px 2px 4px; padding: 3px; border-radius: 12px; background: color-mix(in oklab, var(--rt-foreground) 6%, transparent); }
+	.set-seg button { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border: 0; border-radius: 9px; background: none; color: var(--ink-quiet); font: 500 12px/1 var(--rt-font); cursor: pointer; outline: none; transition: background-color 160ms var(--ease-tint), color 160ms var(--ease-tint); }
+	.set-seg button svg { inline-size: 16px; block-size: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+	.set-seg button[aria-checked="true"] { background: var(--sheet); color: var(--ink); box-shadow: 0 1px 2px color-mix(in srgb, var(--rt-foreground) 10%, transparent); }
+	.set-seg button:focus-visible { outline: 2px solid var(--rt-ring); outline-offset: -2px; }
+	#shell-sidebar nav .set-list > li > :is(a, button) > span { display: grid; gap: 1px; flex: 1 1 auto; }
+	#shell-sidebar nav .set-list > li > :is(a, button) small { color: var(--ink-quiet); font-size: 11.5px; font-weight: var(--rt-weight-normal); }
+	#shell-sidebar nav .set-list > li > button[role="radio"] { min-block-size: 44px; }
+	#shell-sidebar nav .set-list > li > button[aria-checked="true"] { color: var(--ink); font-weight: 550; }
+	#shell-sidebar nav .set-list > li > button[aria-checked="true"]::after {
+		content: ""; flex: none; inline-size: 14px; block-size: 14px; background: currentColor;
+		-webkit-mask: var(--set-check) center / contain no-repeat; mask: var(--set-check) center / contain no-repeat;
+	}
+	.set-swatch { inline-size: 18px; block-size: 18px; flex: none; border-radius: 50%; box-shadow: inset 0 0 0 1px var(--lens-ring); }
+	/* PERSONALITY PREVIEWS (settings sidebar and the pill's Theme chip): each
+	   swatch shows THAT personality's own palette, whatever is worn now: its
+	   ground (half), its emphasis or ink (a quarter) and its signal (a quarter),
+	   in the current mode. Primitives, mirrored from bento.css, harbor.css and
+	   this template's folio block in theme.css. */
+	:is(.set-swatch, .pill-swatch) { background: conic-gradient(from 0deg, var(--sw-s) 0 25%, var(--sw-e) 0 50%, var(--sw-g) 0); }
+	:is(.set-swatch, .pill-swatch)[data-p="bento"] { --sw-g: var(--fog-0); --sw-e: var(--soot-12); --sw-s: var(--coral-11); }
+	:is(.set-swatch, .pill-swatch)[data-p="harbor"] { --sw-g: color-mix(in srgb, var(--indigo-1) 42%, var(--fog-2)); --sw-e: color-mix(in srgb, var(--indigo-12) 22%, var(--fog-12)); --sw-s: var(--blue-8); }
+	:is(.set-swatch, .pill-swatch)[data-p="folio"] { --sw-g: color-mix(in srgb, var(--brown-1) 42%, var(--brown-0)); --sw-e: color-mix(in srgb, var(--brown-12) 45%, var(--soot-12)); --sw-s: var(--red-12); }
+	body.theme-dark :is(.set-swatch, .pill-swatch)[data-p="bento"] { --sw-g: var(--fog-11); --sw-e: var(--soot-0); --sw-s: var(--coral-11); }
+	body.theme-dark :is(.set-swatch, .pill-swatch)[data-p="harbor"] { --sw-g: color-mix(in srgb, var(--blue-12) 24%, var(--fog-10)); --sw-e: color-mix(in srgb, var(--blue-0) 40%, var(--fog-0)); --sw-s: var(--blue-8); }
+	body.theme-dark :is(.set-swatch, .pill-swatch)[data-p="folio"] { --sw-g: color-mix(in srgb, var(--brown-12) 30%, var(--soot-12)); --sw-e: var(--brown-0); --sw-s: var(--red-10); }
+	/* each name is set in its own voice: Folio's in Libron */
+	[data-theme-set="personality:folio"] > span { font-family: "Libron", "Literata", Georgia, serif; }
+	[data-theme-set="personality:folio"] > span :is(small, small *) { font-family: var(--rt-font); }
+	/* and Harbor's in its instrument mono */
+	[data-theme-set="personality:harbor"] > span { font-family: "JetBrains Mono", "JetBrains Mono Fallback", ui-monospace, monospace; letter-spacing: -0.01em; }
+	[data-theme-set="personality:harbor"] > span :is(small, small *) { font-family: var(--rt-font); letter-spacing: normal; }
+	.set-who { display: flex; align-items: center; gap: 10px; padding: 6px 10px 8px; }
+	.set-who > span:last-child { display: grid; gap: 2px; min-inline-size: 0; }
+	.set-who b { overflow: hidden; color: var(--ink); font-size: 13px; font-weight: var(--rt-weight-medium); text-overflow: ellipsis; }
+	.set-who small { color: var(--ink-quiet); font-size: 11.5px; }
+	/* the keys list owns its layout outright: a library nav ul/li rule must
+	   never turn it into a row, and no label can shrink to one character */
+	#shell-sidebar nav .panel ul.set-keys { display: grid; grid-auto-flow: row; grid-template-columns: minmax(0, 1fr); gap: 2px; margin: 0; padding: 2px 10px; }
+	#shell-sidebar nav .panel ul.set-keys > li { display: grid; grid-template-columns: 64px minmax(0, 1fr); flex-direction: initial; align-items: center; gap: 10px; inline-size: 100%; min-block-size: 28px; }
+	#shell-sidebar nav .panel ul.set-keys > li > kbd { justify-self: start; }
+	#shell-sidebar nav .panel ul.set-keys > li > span { min-inline-size: 0; color: var(--ink-quiet); font-size: var(--rt-text-xs); white-space: normal; }
+
+	/* ════════════════════════════════════════════════════════════════════
+	   THE ROW TAB: a piece of the SHEET under the current row, fused to the
+	   sheet's left edge. Fixed, under the transparent column; its left edge
+	   is a clip-path inset, so a deeper row only moves a clip. The flares are
+	   desk children at the sheet's edge (they ride the fold).
+	   ════════════════════════════════════════════════════════════════════ */
+	.deck-tab {
+		position: fixed;
+		inset-block-start: 0;
+		inset-inline-start: 0;
+		z-index: 0;
+		inline-size: var(--side-w);
+		block-size: 32px;
+		background: var(--sheet);
+		opacity: 0;
+		pointer-events: none;
+		view-transition-name: deck-tab;
+		will-change: translate, clip-path;
+	}
+	.deck-flare {
+		position: absolute;
+		inset-block-start: 0;
+		inset-inline-start: calc(-1 * var(--flare-r));
+		z-index: 3;
+		inline-size: var(--flare-r);
+		block-size: var(--flare-r);
+		opacity: 0;
+		pointer-events: none;
+		will-change: translate, opacity;
+	}
+	.deck-flare[data-edge="t"] { background: radial-gradient(circle at 0 0, transparent calc(var(--flare-r) - 0.5px), var(--sheet) var(--flare-r)); view-transition-name: deck-ft; }
+	.deck-flare[data-edge="b"] { background: radial-gradient(circle at 0 100%, transparent calc(var(--flare-r) - 0.5px), var(--sheet) var(--flare-r)); view-transition-name: deck-fb; }
+	@media (min-width: 768px) {
+		body.deck-tab-on .deck-tab { opacity: 1; }
+		body.deck-tab-on .deck-flare { opacity: var(--flare-o, 1); }
+	}
+	/* the fallback: whenever the JS tab is not showing (before deck.js placed
+	   it, after a layout flip it has not caught yet), the current row fuses
+	   itself: sheet-coloured, square on the sheet side, reaching the edge */
+	@media (min-width: 768px) {
+		body:not(.deck-tab-on) #shell-sidebar:not([data-layout="mobile"]) nav .panel-scroll :is(li > a, li > details > summary)[aria-current="page"] {
+			background: var(--sheet);
+			border-start-end-radius: 0;
+			border-end-end-radius: 0;
+			margin-inline-end: -8px;
+		}
+	}
+	/* the fused row: the tab is its ground; the text only gains weight */
+	#shell-sidebar nav .panel-scroll :is(li > a, li > details > summary)[aria-current="page"] { color: var(--ink); font-weight: 550; }
+	#shell-sidebar nav li > details:not([open]):has([aria-current="page"]) > summary { color: var(--ink); font-weight: 550; }
+
+	/* ── the rail edge (SidebarRail) ── */
+	.deck-edge {
+		position: absolute;
+		inset-block: 0;
+		inset-inline-start: -7px;
+		z-index: 4;
+		inline-size: 12px;
+		cursor: ew-resize;
+	}
+	.deck-edge::after {
+		content: "";
+		position: absolute;
+		inset-block: 16px;
+		inset-inline-start: 5px;
+		inline-size: 2px;
+		border-radius: 2px;
+		background: var(--lens-ring);
+		opacity: 0;
+		transition: opacity 160ms var(--ease-tint);
+	}
+	@media (hover: hover) and (pointer: fine) {
+		.deck-edge:hover::after { opacity: 1; transition-delay: 120ms; }
+	}
+	.deck-edge:active::after { background: var(--rt-foreground); opacity: 1; }
+	#shell-sidebar[data-state="collapsed"] ~ .deck .deck-edge { cursor: e-resize; }
+
+	/* ── #layer: bubbles and notices, inside the sheet above the pill (pill.css
+	   places it); swipe a toast right to dismiss (deck.js). #pill-console (the
+	   Patch Region console, the pill's agent console) sits in the same place
+	   and is placed by pill.css, "THE AGENT SLOT"; while it is open #layer
+	   steps up over it ── */
+	#layer {
+		position: absolute;
+		inset-block-end: calc(var(--bar-h) + 6px);
+		inset-inline-start: 50%;
+		z-index: 7;
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+		inline-size: min(var(--pill-base-w, 520px), calc(100% - 24px));
+		translate: -50% 0;
+		pointer-events: none;
+	}
+	#layer > * { pointer-events: auto; touch-action: pan-y; transform-origin: 50% 100%; }
+
+	/* ── regions condense into place (after first paint only) ── */
+	body.live :is(#rail, #navigation, #header, #aside, #footer) > * {
+		transition: opacity 240ms var(--ease-arrive), translate 240ms var(--ease-arrive), filter 240ms var(--ease-arrive), scale 240ms var(--ease-arrive);
+	}
+	body.live :is(#rail, #navigation) > :nth-child(2) { transition-delay: 40ms; }
+	body.live :is(#rail, #navigation) > :nth-child(3) { transition-delay: 80ms; }
+	body.live #aside > * { transition-delay: 160ms; }
+	body.live #aside > :nth-child(2) { transition-delay: 200ms; }
+	@starting-style {
+		body.live :is(#rail, #navigation, #header, #aside) > * { opacity: 0; translate: 0 -4px; filter: blur(4px); }
+		body.live #aside > * { translate: 0 6px; }
+		body.live #footer > * { opacity: 0; translate: 0 4px; }
+	}
+	/* the ghost of a removed child dissolves where it was (deck.js) */
+	[data-deck-ghost] {
+		position: fixed !important;
+		margin: 0 !important;
+		pointer-events: none !important;
+		z-index: 5;
+		transition: opacity 160ms var(--ease-leave), translate 160ms var(--ease-leave), filter 160ms var(--ease-leave) !important;
+	}
+	[data-deck-ghost].gone { opacity: 0; translate: 0 -4px; filter: blur(4px); }
+	/* a status-line ghost keeps its one line while it dissolves */
+	[data-deck-ghost="footer"] { white-space: nowrap; }
+	#layer > [data-deck-ghost].gone { translate: 16px 0; filter: none; }
+	/* ── the page content change rides a View Transition; the chrome does not ──
+	   ::view-transition-* pseudos inherit from html, not body: the curves they
+	   use must live on :root or the animation computes to none */
+	:root {
+		--ease-arrive: cubic-bezier(0.23, 1, 0.32, 1);
+		--ease-leave: cubic-bezier(0.32, 0.72, 0, 1);
+	}
+	::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+	/* the row tab and its flares glide to the new row on the tab's livelier
+	   curve (5% overshoot); the panel's rows ride above them and swap in one
+	   frame (identical labels), so the current label never vanishes */
+	::view-transition-group(deck-tab), ::view-transition-group(deck-ft), ::view-transition-group(deck-fb) { animation-duration: 300ms; animation-timing-function: var(--dk-ease-tab); }
+	::view-transition-old(deck-tab), ::view-transition-old(deck-ft), ::view-transition-old(deck-fb) { animation: 120ms linear both deck-vt-fade-out; }
+	::view-transition-new(deck-tab), ::view-transition-new(deck-ft), ::view-transition-new(deck-fb) { animation: none; }
+	::view-transition-group(deck-panel) { animation-duration: 0s; }
+	::view-transition-old(deck-panel) { animation: none; opacity: 0; }
+	::view-transition-new(deck-panel) { animation: none; }
+	::view-transition-group(sheet-content) { animation: none; }
+	/* sequenced, not superimposed: the old page leaves fast, the new one lifts
+	   in once the old is mostly gone, so two pages of text never double-expose */
+	::view-transition-old(sheet-content) { animation: 90ms var(--ease-leave) both deck-vt-fade-out; }
+	/* 50ms, not 70: the old page is ~90% gone by then, and the longer wait
+	   recorded two frames of an empty sheet between the pages */
+	::view-transition-new(sheet-content) { animation: 220ms var(--ease-arrive) 50ms both deck-vt-lift; }
+
+	/* ── tablet: the inspector floats over the sheet's edge ── */
+	@media (min-width: 768px) and (max-width: 1100px) {
+		.deck-row > .inspector {
+			position: absolute;
+			inset-block: 0;
+			inset-inline-end: 0;
+			z-index: 4;
+			margin: 0;
+			border-radius: var(--deck-radius);
+			background: var(--desk);
+			box-shadow: var(--rt-shadow-overlay), inset 0 0 0 1px var(--sheet-edge);
+			translate: calc(100% + 24px) 0;
+			transition: translate 200ms var(--ease-leave), visibility 0s linear 200ms;
+		}
+		body.insp .deck-row > .inspector { margin: 0; translate: 0 0; transition: translate var(--t-deck) var(--spring-deck), visibility 0s; }
+	}
+	/* where the inspector floats it is not fused: the selected card is a card */
+	@media (max-width: 1100px) {
+		.inspector > .detail-inner { padding-inline-end: 0; }
+		#aside > :not([data-deck-ghost]), .pin-tab { margin-inline: 8px; border-radius: var(--tab-r); }
+		.pin-tab { inset-inline-start: 8px; inline-size: calc(100% - 16px); background: var(--sheet); }
+		.pin-flare { display: none; }
+	}
+
+	/* ── phone: the sheet goes full-bleed, the column is the drawer (with the
+	   ribbon as its top row of icons), the inspector is a bottom sheet ── */
+	@media (max-width: 767.98px) {
+		.shell-inset.deck { padding: 0; }
+		.sheet { border-radius: 0; box-shadow: none !important; }
+		.sheet > .shell-top { block-size: 52px; padding-inline: 6px 8px; }
+		.deck-edge { display: none; }
+		.deck-trigger[data-tooltip]::after { display: none; }
+		#shell-sidebar[data-layout="mobile"] > nav {
+			background: var(--desk);
+			transition: translate var(--t-deck) var(--spring-deck);
+		}
+		#shell-sidebar[data-layout="mobile"][aria-hidden="true"] > nav { translate: calc(-100% - 72px) 0; transition: translate 260ms var(--ease-leave); }
+		#shell-sidebar[data-layout="mobile"] { transition: background-color var(--t-deck) var(--ease-tint); }
+		/* a tapped page row: the drawer and its scrim hold until the page swaps (deck.js) */
+		html.deck-drawer-going #shell-sidebar[data-layout="mobile"] > nav { translate: 0 0; transition: none; visibility: visible; }
+		html.deck-drawer-going #shell-sidebar[data-layout="mobile"] { background: rgb(0 0 0 / 0.3); transition: none; visibility: visible; }
+		html.deck-drawer-going body.theme-dark #shell-sidebar[data-layout="mobile"] { background: rgb(0 0 0 / 0.55); }
+		/* the drawer's scrim: by night the sheet must clearly step back, and the
+		   drawer's open edge carries a hairline so it never melts into it */
+		#shell-sidebar[data-layout="mobile"]:not([aria-hidden="true"]) { background: rgb(0 0 0 / 0.3); }
+		body.theme-dark #shell-sidebar[data-layout="mobile"]:not([aria-hidden="true"]) { background: rgb(0 0 0 / 0.55); }
+		/* the drawer casts a shadow on the sheet in both modes (J5), plus the
+		   hairline by night */
+		#shell-sidebar[data-layout="mobile"] > nav { box-shadow: 8px 0 28px -10px rgb(0 0 0 / 0.35), 1px 0 0 color-mix(in oklab, var(--rt-foreground) 10%, transparent); }
+		body.theme-dark #shell-sidebar[data-layout="mobile"] > nav { box-shadow: inset -1px 0 0 var(--sheet-edge), 10px 0 32px -8px rgb(0 0 0 / 0.7); }
+		#shell-sidebar[data-layout="mobile"] nav :is(li > a, li > button, li > details > summary) { min-block-size: 44px; }
+		#shell-sidebar[data-layout="mobile"] nav ul ul > li > :is(a, details > summary) { min-block-size: 44px; }
+		.deck-row > .inspector {
+			position: fixed;
+			inset-inline: 0;
+			inset-block-end: 0;
+			z-index: calc(var(--rt-z-popover) - 5);
+			inline-size: auto;
+			block-size: 88dvh;
+			margin: 0;
+			border-radius: 18px 18px 0 0;
+			background: var(--desk);
+			box-shadow: var(--rt-shadow-overlay), inset 0 1px 0 var(--sheet-edge);
+			translate: 0 calc(100% + 24px);
+			transition: translate 260ms var(--ease-leave), visibility 0s linear 260ms;
+			touch-action: none;
+		}
+		body.insp .deck-row > .inspector { margin: 0; translate: 0 var(--sheet-rest, 48dvh); transition: translate var(--t-deck) var(--spring-deck), visibility 0s; }
+		body.insp .deck-row > .inspector.deck-dragging { transition: none; }
+		.deck-grab { display: flex; flex: none; justify-content: center; padding: 8px 0 4px; cursor: grab; }
+		.deck-grab > i { inline-size: 36px; block-size: 5px; border-radius: 3px; background: var(--rt-border); }
+		.inspector > .detail-inner { touch-action: pan-y; }
+
+		.sheet > .sheet-bar { padding: 0 8px env(safe-area-inset-bottom); block-size: calc(var(--bar-h) + env(safe-area-inset-bottom)); grid-template-columns: auto 1fr auto; }
+		.sheet-bar :is(.bar-r, #footer) { display: none; }
+		/* the ribbon rides in the drawer, as its top row */
+		/* the ribbon rides in the drawer as its top row, in the ribbon's own tone;
+		   the active icon is the same tab as on desktop, turned 90°: a piece of
+		   the panel rising into the ribbon, joined by two inverse corners */
+		#region-nav > .ribbon { position: relative; inset: auto; flex: none; flex-direction: row; align-items: center; inline-size: auto; block-size: 60px; padding: 0 20px; background: var(--ribbon); box-shadow: none; }
+		#region-nav > .ribbon .ribbon-set { margin-inline-start: 18px; gap: 6px; }
+		#region-nav > .deck-ws { display: none; }
+		#region-nav > .ribbon::before, #region-nav > .ribbon::after, #region-nav > .ribbon :is(.ribbon-tab, .ribbon-flare) { display: none; }
+		#region-nav > .ribbon :is(.ribbon-set, .ribbon-foot) { flex-direction: row; margin: 0; }
+		#region-nav > .ribbon .ribbon-foot { margin-inline-start: auto; }
+		#region-nav > .ribbon #rail { display: none; }
+		#region-nav > .ribbon [data-tooltip]::after { display: none; }
+		#region-nav > .ribbon .ribbon-btn[data-active] { color: var(--ink); }
+		#region-nav > .ribbon .ribbon-btn[data-active] { border-radius: 10px 10px 0 0; background: var(--panel); }
+		#region-nav > .ribbon .ribbon-btn[data-active]::before {
+			inset: auto -12px -12px;
+			block-size: 12px;
+			border-radius: 0;
+			opacity: 1;
+			background:
+				radial-gradient(circle at 0 0, transparent 11.5px, var(--panel) 12px) left bottom / 12px 12px no-repeat,
+				radial-gradient(circle at 100% 0, transparent 11.5px, var(--panel) 12px) right bottom / 12px 12px no-repeat,
+				linear-gradient(var(--panel), var(--panel)) center / calc(100% - 24px) 100% no-repeat;
+		}
+		/* the current row: the sheet's colour, as on desktop (no card, no ring) */
+		#shell-sidebar[data-layout="mobile"] nav .panel-scroll [aria-current="page"] { background: var(--sheet); box-shadow: none; }
+		.panel-head { margin-block-start: 4px; }
+		.deck-tab, .deck-flare { display: none; }
+	}
+
+	/* ── reduced motion: nothing travels; every change still reads, as a
+	   cross-fade of 160 ms or less ── */
+	@media (prefers-reduced-motion: reduce) {
+		.deck-trigger .deck-divider, .deck-edge::after { transition-property: opacity, visibility; }
+		#shell-sidebar nav ul ul::before { scale: 1 1 !important; transition: opacity 120ms linear; }
+		body.live #shell-sidebar nav details[open] > ul > li { transition: opacity 120ms linear; transition-delay: 0ms !important; }
+		#shell-sidebar nav details.deck-closing > ul > li { translate: none; }
+		#shell-sidebar nav details.deck-closing > ul::before { opacity: 0; }
+		#shell-sidebar nav li > details > summary:not([data-tooltip])::after { transition: none; }
+		#shell-sidebar nav .deck-flip { transition: none; }
+		body.live :is(#rail, #navigation, #header, #aside, #footer) > * { transition: opacity 160ms linear; transition-delay: 0ms; }
+		[data-deck-ghost].gone { translate: none !important; filter: none !important; }
+		.deck-row > .inspector, body.insp .deck-row > .inspector { transition: opacity 160ms linear, visibility 0s linear 160ms; }
+		#shell-sidebar[data-layout="mobile"] > nav { transition: opacity 160ms linear; }
+		.ribbon :is(.ribbon-btn, .ribbon-mark, .ribbon-avatar) { transition: color 120ms linear; }
+	}
+	@media (prefers-reduced-motion: reduce) {
+		@starting-style {
+			body.live :is(#rail, #navigation, #header, #aside, #footer) > * { translate: none; filter: none; scale: none; }
+			body.live #shell-sidebar nav details[open] > ul > li { translate: none; }
+		}
+	}
+}
+
+@keyframes deck-vt-fade-out { to { opacity: 0; } }
+@keyframes deck-vt-lift { from { opacity: 0; translate: 0 6px; } }
+
+/* cross-document View Transitions: the Lens and the sheet content (Chromium);
+   off under reduced motion */
+@view-transition { navigation: auto; }
+/* reduced motion keeps the feedback and drops the travel: the tab and the
+   content cross-fade in place, nothing glides or lifts */
+@media (prefers-reduced-motion: reduce) {
+	::view-transition-group(*) { animation-duration: 0s !important; }
+	/* out, then in: the two pages never share a frame (no double exposure) */
+	::view-transition-old(sheet-content) { animation: 90ms linear both deck-vt-fade-out; }
+	::view-transition-new(sheet-content) { animation: 120ms linear 90ms both deck-fade-in; }
+	::view-transition-old(deck-tab), ::view-transition-old(deck-ft), ::view-transition-old(deck-fb) { animation: 100ms linear both deck-vt-fade-out; }
+	::view-transition-new(deck-tab), ::view-transition-new(deck-ft), ::view-transition-new(deck-fb) { animation: 140ms linear both deck-fade-in; }
+}
+@keyframes deck-fade-in { from { opacity: 0; } }
+/* a phone's page change starts in the open drawer, over a scrim. The old
+   page is captured WITH the drawer and the scrim (deck.js unnames the old
+   content on pageswap, so it stays under the scrim in the old root), and the
+   new page's chrome fades in over it: one crossfade from dim to bright,
+   never a one-frame jump from the scrim to the undimmed page. */
+html.deck-drawer-swap .sheet .canvas-scroll { view-transition-name: none; }
+/* 150ms on the strong ease-out: the two pages share at most a frame or two,
+   so the old page's words never read through the new one (200ms showed both) */
+html.deck-drawer-vt::view-transition-new(root) { animation: 150ms cubic-bezier(0.23, 1, 0.32, 1) both deck-fade-in; }
+@media (prefers-reduced-motion: reduce) {
+	html.deck-drawer-vt::view-transition-new(root) { animation: 120ms linear both deck-fade-in; }
+}
+/* charts: the first drawing is the final one (no fade, no entry tween while
+   the page arrives); see "charts draw once their signals arrive" above */
+/* the canvas scroller takes focus for PageDown/arrows: its ground is the
+   sheet, so it never draws a hard frame inside the sheet */
+@layer shell {
+	.sheet .canvas-scroll:focus, .sheet .canvas-scroll:focus-visible, #main:focus, #main:focus-visible { outline: none; box-shadow: none; }
+}
+
+/* ── THE THEME SWITCH (K1): two simple, honest transitions ──
+   index.html's setTheme() runs them.
+   - A change of MODE (light ↔ dark), from any control, is the radial reveal:
+     a same-document View Transition (html.theme-vt) whose OLD snapshot sits
+     on top while a soft-rimmed (48px) hole grows through it from the pressed
+     control, or from the pill's Theme chip when nothing was pressed (the
+     palette, a key, a script). 340ms on an ease-in-out, ending exactly past
+     the farthest corner (--vt-end). No frame mixes the two polarities, so
+     nothing passes through mid-grey. The live new page beneath is opaque and
+     still, so a late snapshot degrades to an instant swap, never a blank.
+   - A change of PERSONALITY is a fade-through (.theme-veil, below): the
+     page fades to the current ground, the swap happens unseen, the new face
+     comes in. No frame shows two typefaces.
+   Unlayered on purpose: it must beat the shell's own root rule (animation:
+   none, for page switches) and nothing else. */
+@property --vt-r { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@keyframes theme-reveal { from { --vt-r: 0px; } to { --vt-r: var(--vt-end, 150vmax); } }
+/* only the root is captured: the shell's own named boxes step out (a short
+   list: a universal rule restyled every element in the capture frame) */
+html.theme-vt :is(.sheet .canvas-scroll, .panel[data-active], .deck-tab, .deck-flare, #region-detail) { view-transition-name: none !important; }
+/* L1: content held unseen for a reveal is skipped (deck.js cloak); the veil
+   over it would draw only sheet tone, so it leaves the paint too */
+html.deck-cloaked .sheet-veil { visibility: hidden; }
+html.theme-vt::view-transition-group(root) { animation: none; }
+html.theme-vt::view-transition-new(root) { animation: none; opacity: 1; mix-blend-mode: normal; }
+html.theme-vt::view-transition-old(root) {
+	z-index: 1; mix-blend-mode: normal;
+	animation: 340ms cubic-bezier(0.45, 0.05, 0.3, 1) both theme-reveal;
+	-webkit-mask-image: radial-gradient(circle at var(--vt-x, 50%) var(--vt-y, 100%), transparent var(--vt-r), #000 calc(var(--vt-r) + 48px));
+	mask-image: radial-gradient(circle at var(--vt-x, 50%) var(--vt-y, 100%), transparent var(--vt-r), #000 calc(var(--vt-r) + 48px));
+}
+/* the palette that chose the mode is closing: the old snapshot leaves the
+   whole pill out, so no frozen copy of it lingers; the live pill closes underneath */
+html.theme-vt-cap #pill, html.theme-vt-cap #pill *, html.theme-vt-cap #pill *::before, html.theme-vt-cap #pill *::after { visibility: hidden !important; }
+/* the frame of the swap: no CSS transition may start on the new tokens, or a
+   tinting control would lag the ground behind it */
+html.theme-swap *, html.theme-swap *::before, html.theme-swap *::after { transition: none !important; }
+/* the personality's fade-through: one layer of the current ground over the
+   whole window (index.html animates its opacity: in 120ms, out 160ms) */
+.theme-veil { position: fixed; inset: 0; z-index: 2147483647; pointer-events: none; opacity: 0; contain: strict; }
+
+/* ════════════════════════════════════════════════════════════════════
+   THE AGENTS SIDEBAR (Alt+5): the herdr sessions. The ribbon icon is a
+   generic agent glyph, stroked like the other ribbon icons; its
+   badge mirrors $herdrBadge: red while a session is blocked, blue while one
+   is done. The panel's body is the personal Patch Region agents
+   (#agents-panel): the herdr console Plugin renders .ha-* markup into it
+   (find + New, groups per herdr workspace, a row per session); these rules
+   give it the Pages panel's rows (32px, 13px, the quiet ink, the lens
+   ghost on hover, the current row in ink and weight). The status dots and
+   the agents' marks share the console's colours (pill.css, --hc-*).
+   ════════════════════════════════════════════════════════════════════ */
+@layer shell {
+	.ribbon .ribbon-btn[hidden] { display: none; }
+	.ribbon-btn[data-badge="blocked"] .ribbon-badge { background: var(--hc-block, var(--danger)); }
+	.ribbon-btn[data-badge="done"] .ribbon-badge { background: var(--hc-done, var(--info)); }
+
+	#agents-panel { display: block; }
+	#agents-panel:empty { display: none; }
+	#panel-agents .agents-wait[hidden], #shell-sidebar nav .ha-error[hidden] { display: none; }
+	.ha-panel { display: flex; flex-direction: column; gap: 2px; padding: 2px 8px; }
+
+	/* find + New, one row */
+	.ha-tools { display: flex; align-items: center; gap: 6px; margin: 2px 0 6px; }
+	#shell-sidebar nav .ha-find {
+		flex: 1 1 auto; min-inline-size: 0; box-sizing: border-box; block-size: 32px; margin: 0; padding: 0 10px;
+		border: 0; border-radius: 10px; background: color-mix(in oklab, var(--rt-foreground) 6%, transparent); box-shadow: none;
+		color: var(--ink); font: 400 13px/1 var(--rt-font); outline: none; -webkit-appearance: none; appearance: none;
+	}
+	#shell-sidebar nav .ha-find::placeholder { color: var(--ink-quiet); opacity: 1; }
+	#shell-sidebar nav .ha-find:focus-visible { outline: 2px solid var(--rt-ring); outline-offset: -2px; }
+	#shell-sidebar nav .ha-find::-webkit-search-cancel-button { -webkit-appearance: none; }
+	#shell-sidebar nav :is(.ha-new, .ha-close, button.ha-group-h, .ha-row) { margin: 0; border: 0; background: transparent; box-shadow: none; font: inherit; letter-spacing: normal; text-transform: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+	#shell-sidebar nav .ha-new {
+		flex: none; display: inline-flex; align-items: center; gap: 4px; block-size: 32px; padding: 0 10px; border-radius: 10px;
+		box-shadow: inset 0 0 0 1px var(--lens-ring); color: var(--ink); font: 500 13px/1 var(--rt-font); white-space: nowrap;
+		transition: background-color 120ms var(--ease-tint), scale var(--rt-dur-press) var(--ease-arrive);
+	}
+	#shell-sidebar nav .ha-new:hover { background: var(--lens-ghost); }
+
+	/* a group per herdr workspace: ▾ NAME · n, folds like the tree */
+	.ha-group { display: flex; flex-direction: column; gap: 2px; }
+	.ha-group[hidden] { display: none; }
+	.ha-group + .ha-group { margin-block-start: 4px; }
+	#shell-sidebar nav .ha-group-h {
+		display: flex; align-items: center; gap: 6px; box-sizing: border-box; inline-size: 100%; block-size: 26px; padding: 0 10px; border-radius: 8px;
+		color: var(--ink-quiet); font: var(--rt-weight-semibold) 11px/1 var(--rt-font); letter-spacing: 0.5px; text-transform: uppercase; text-align: start;
+		list-style: none; cursor: pointer; user-select: none;
+	}
+	#shell-sidebar nav .ha-group-h::-webkit-details-marker { display: none; }
+	#shell-sidebar nav .ha-group-h::before {
+		content: ""; flex: none; inline-size: 10px; block-size: 10px; background: currentColor; rotate: 0deg;
+		-webkit-mask: var(--ha-chev) center / contain no-repeat; mask: var(--ha-chev) center / contain no-repeat;
+		transition: rotate 200ms var(--ease-move);
+	}
+	#shell-sidebar { --ha-chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); }
+	#shell-sidebar nav :is(details.ha-group:not([open]), .ha-group[data-collapsed]) > .ha-group-h::before { rotate: -90deg; }
+	#shell-sidebar nav .ha-group-h:hover { color: var(--ink); }
+	#shell-sidebar nav .ha-group-h:focus-visible { outline: 2px solid var(--rt-ring); outline-offset: -2px; }
+	.ha-count { color: var(--ink-quiet); font-variant-numeric: tabular-nums; letter-spacing: 0; }
+	.ha-count::before { content: "· "; }
+	.ha-group[data-collapsed] > :not(.ha-group-h) { display: none; }
+
+	/* a row: mark · name · CREW · (· in the pill) · status dot · (✕) */
+	#shell-sidebar nav .ha-row {
+		position: relative; isolation: isolate; display: flex; align-items: center; gap: 10px; box-sizing: border-box; inline-size: 100%;
+		min-block-size: 32px; padding: 0 10px; border-radius: 12px; color: var(--ink-quiet); font: 400 13px/1.35 var(--rt-font); text-align: start;
+		transition: transform var(--rt-dur-press) var(--ease-arrive), color 120ms var(--ease-tint);
+	}
+	#shell-sidebar nav .ha-row[hidden] { display: none; }
+	#shell-sidebar nav .ha-row::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--lens-ghost); opacity: 0; transition: opacity 160ms var(--ease-tint); }
+	@media (hover: hover) and (pointer: fine) {
+		#shell-sidebar nav .ha-row:hover { color: var(--ink); }
+		#shell-sidebar nav .ha-row:hover::before { opacity: 1; transition-duration: 120ms; }
+	}
+	#shell-sidebar nav .ha-row:active { transform: scale(0.985); }
+	#shell-sidebar nav .ha-row:focus-visible { outline: 2px solid var(--rt-ring); outline-offset: -1px; }
+	/* the attached row (the session in the pill): the sheet's ground, ink and weight, as the current page row */
+	#shell-sidebar nav .ha-row[aria-current="true"] { color: var(--ink); font-weight: 550; }
+	#shell-sidebar nav .ha-row[aria-current="true"]::before { background: var(--sheet); opacity: 1; box-shadow: 0 1px 2px color-mix(in srgb, var(--rt-foreground) 8%, transparent); }
+	.ha-ico { display: inline-grid; place-items: center; flex: none; inline-size: 16px; block-size: 16px; }
+	.ha-ico svg { inline-size: 16px; block-size: 16px; }
+	.ha-name { flex: 0 1 auto; min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.ha-crew { flex: none; padding: 1px 4px; border-radius: 5px; box-shadow: inset 0 0 0 1px var(--lens-ring); color: var(--ink-quiet); font: 600 9px/1.3 var(--rt-font); letter-spacing: .05em; text-transform: uppercase; }
+	.ha-here { flex: 0 1 auto; min-inline-size: 0; overflow: hidden; color: var(--ink-quiet); font-size: 12px; font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
+	.ha-row > .ha-dot { margin-inline-start: auto; }
+	.ha-row > .ha-dot ~ .ha-close { margin-inline-start: 0; }
+	/* a session the console opened: its close ✕ (in the row or right after it) */
+	#shell-sidebar nav .ha-close {
+		display: inline-grid; place-items: center; flex: none; inline-size: 22px; block-size: 22px; margin-inline-end: -4px; padding: 0; border-radius: 7px;
+		color: var(--ink-quiet); font: 400 12px/1 var(--rt-font); opacity: .7; transition: opacity 120ms var(--ease-tint), background-color 120ms var(--ease-tint);
+	}
+	#shell-sidebar nav .ha-close:hover { opacity: 1; background: color-mix(in oklab, var(--rt-foreground) 8%, transparent); color: var(--ink); }
+	#shell-sidebar nav .ha-close:focus-visible { opacity: 1; outline: 2px solid var(--rt-ring); outline-offset: -2px; }
+	#shell-sidebar nav .ha-close svg { inline-size: 12px; block-size: 12px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+	/* (beside the row, not inside it: laid over the row's right end) */
+	#shell-sidebar nav .ha-row:has(+ .ha-close) { padding-inline-end: 36px; }
+	#shell-sidebar nav .ha-row + .ha-close { display: grid; position: relative; z-index: 1; margin: -27px 6px 5px auto; }
+	#shell-sidebar nav .ha-row + .ha-close[hidden] { display: none; }
+
+	.ha-empty { margin: 6px 10px; color: var(--ink-quiet); font-size: var(--rt-text-xs); line-height: 1.5; }
+	#shell-sidebar nav .ha-error { display: flex; align-items: center; gap: 8px; margin: 6px 10px; padding: 8px 10px; border-radius: 10px; background: var(--hc-err-bg, var(--danger-bg)); box-shadow: inset 0 0 0 1px var(--hc-err-ring, var(--danger-border)); color: var(--hc-err-ink, var(--danger-text)); font-size: 12px; line-height: 1.4; }
+	#shell-sidebar nav .ha-error > span { flex: 1 1 auto; min-inline-size: 0; }
+	#shell-sidebar nav .ha-error > button { flex: none; margin: 0; padding: 2px 8px; border: 0; border-radius: 6px; background: none; box-shadow: inset 0 0 0 1px currentColor; color: inherit; font: 500 12px/1.4 var(--rt-font); cursor: pointer; }
+	@media (max-width: 767.98px) {
+		#shell-sidebar[data-layout="mobile"] nav :is(.ha-row, .ha-new, .ha-find) { min-block-size: 44px; }
+		#shell-sidebar[data-layout="mobile"] nav .ha-row + .ha-close { inline-size: 32px; block-size: 32px; margin-block: -38px 6px; }
+	}
+	@media (prefers-reduced-motion: reduce) { #shell-sidebar nav .ha-group-h::before { transition: none; } }
+}

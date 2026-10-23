@@ -1,0 +1,29 @@
+{
+  "name": "ledger",
+  "displayName": "Ledger",
+  "kind": "theme",
+  "version": "1.0.4",
+  "description": "Executive and finance: warm stone paper, a deep evergreen emphasis surface, gold as the one decisive action, indigo as the quiet mark, and serif figures.",
+  "publisher": {
+    "name": "Artyficial",
+    "url": "https://github.com/ndendic/official-artyficial"
+  },
+  "repository": "https://github.com/ndendic/official-artyficial",
+  "license": "MIT",
+  "tags": [
+    "theme",
+    "finance",
+    "serif",
+    "evergreen"
+  ],
+  "screenshots": [
+    ".artyficial/screenshot-day.webp",
+    ".artyficial/screenshot-night.webp"
+  ],
+  "readme": "README.md",
+  "platform": {
+    "min": "0.20.1",
+    "max_exclusive": null
+  },
+  "manifest": "manifest.json"
+}

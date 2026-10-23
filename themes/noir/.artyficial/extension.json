@@ -1,0 +1,29 @@
+{
+  "name": "noir",
+  "displayName": "Noir",
+  "kind": "theme",
+  "version": "1.0.2",
+  "description": "One loud lime on near-black, a warm near-white day that keeps the same lime, Big Shoulders Display for the hero.",
+  "publisher": {
+    "name": "Artyficial",
+    "url": "https://github.com/ndendic/official-artyficial"
+  },
+  "repository": "https://github.com/ndendic/official-artyficial",
+  "license": "MIT",
+  "tags": [
+    "theme",
+    "dark",
+    "lime",
+    "near-black"
+  ],
+  "screenshots": [
+    ".artyficial/screenshot-day.webp",
+    ".artyficial/screenshot-night.webp"
+  ],
+  "readme": "README.md",
+  "platform": {
+    "min": "0.20.1",
+    "max_exclusive": null
+  },
+  "manifest": "manifest.json"
+}

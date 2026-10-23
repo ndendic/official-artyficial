@@ -1,0 +1,31 @@
+{
+	"name": "coast",
+	"version": "1.0.3",
+	"kind": "theme",
+	"title": "Coast",
+	"description": "Warm coastal: Wheat paper by day and Onyx water by night, Oceanic as the one decisive action (Nectarine at night), Nectarine as the warm mark, mono figures. From the Onyx, Wheat, Oceanic, Nectarine board.",
+	"entry": "coast.css",
+	"preview": null,
+	"datastart": {
+		"min": "0.20.1"
+	},
+	"modes": [
+		"day",
+		"night"
+	],
+	"faces": [
+		"Albert Sans",
+		"JetBrains Mono"
+	],
+	"license": "MIT",
+	"files": {
+		".artyficial/extension.json": "sha256:132bdf3ac03df1c4bb074fa9a8b826411d0e034b04962c8d4532c3c1854df2a7",
+		".artyficial/screenshot-day.webp": "sha256:1324282aeecc175baf2610d077dca97eb4a887003f928edfecb370285d3b111b",
+		".artyficial/screenshot-night.webp": "sha256:d468a52b68f31809fcfa87d77bf24b3dc340039c924a606d265edaadfce52261",
+		"LICENSE": "sha256:b23a1e727268b4e1da945af882c0e6a86cf056c3f68ff86527c0bfdb65aecf89",
+		"README.md": "sha256:a94c8896b410663c3f5895dbf5c7aff38776125715b80522ca241399ab1a08f8",
+		"coast.css": "sha256:adfc7da302f41c18b4db89949f5e776e46fdee22b78feadcd058efcce2c936a6",
+		"coast.default.css": "sha256:31fc229d9f11134033f249b686677c0844beb446c3fb17f03f57e584af58a47d",
+		"coast.src.css": "sha256:e5f7ecfd1989c7772cf90ebb9d19cd280cc0b0e179913fa29da278778878f35e"
+	}
+}

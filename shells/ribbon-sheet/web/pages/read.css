@@ -1,0 +1,77 @@
+/* read: the long-read sample Page (pages/read.html), on the reading measure. Only roles, so it recolours
+   with every theme; the palette and day/night figures carry literal colours in their markup on purpose. */
+@layer pages {
+	body[data-page="read"] {
+		.rd-post { display: grid; gap: 28px; max-inline-size: 760px; margin-inline: auto; padding-block: 8px 48px; }
+		.rd-post > section { display: grid; gap: 16px; }
+		.rd-post h2, .rd-post h3 { margin: 0; text-wrap: balance; }
+		.rd-post p, .rd-post li, .rd-post dd { text-wrap: pretty; }
+		.rd-post p { margin: 0; }
+
+		/* the head: kicker, title, lead, byline */
+		.rd-head { display: grid; gap: 14px; }
+		.rd-kicker { color: var(--primary-text); font-size: var(--rt-text-xs); font-weight: 600; letter-spacing: var(--tracking-caps, 0.12em); text-transform: uppercase; }
+		.rd-head h2 { font-family: var(--font-hero); font-size: clamp(28px, 4.2vw, 40px); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-hero); line-height: 1.12; }
+		.rd-lead { color: var(--fg-muted); font-size: 1.18em; line-height: 1.55; }
+		.rd-byline { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; }
+		.rd-byline > span:nth-child(2) { display: grid; gap: 1px; }
+		.rd-byline small { color: var(--fg-muted); }
+		.rd-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-inline-start: auto; }
+
+		/* figures */
+		figure { display: grid; gap: 10px; margin: 0; }
+		figure svg { display: block; inline-size: 100%; block-size: auto; }
+		figcaption { color: var(--fg-muted); font-size: var(--rt-text-xs); line-height: 1.5; }
+		.rd-hero svg { border-radius: 16px; }
+		.rd-sky { fill: var(--bg-inset); }
+		.rd-sun { fill: var(--accent); }
+		.rd-sea { fill: var(--primary); }
+		.rd-sea-1 { opacity: .45; }
+		.rd-sea-2 { opacity: .72; }
+		.rd-sand { fill: var(--bg-emphasis); }
+		.rd-palette .rd-sw-name { font: 700 22px var(--font-hero); }
+		.rd-palette .rd-sw-hex { font: 14px var(--font-mono); }
+		.rd-palette .rd-sw-light { stroke: var(--border-strong); }
+		.rd-node rect { fill: var(--bg-elevated); stroke: var(--border-strong); stroke-width: 1.5; }
+		.rd-node-key rect { fill: var(--primary); stroke: none; }
+		.rd-node-mark rect { fill: var(--accent); stroke: none; }
+		.rd-node text { fill: var(--fg); font: 600 16px var(--font-ui, var(--rt-font)); text-anchor: middle; }
+		.rd-node .rd-node-sub { fill: var(--fg-muted); font-size: 12px; font-weight: 400; }
+		.rd-node-key text, .rd-node-key .rd-node-sub { fill: var(--primary-fg); }
+		.rd-node-mark text, .rd-node-mark .rd-node-sub { fill: var(--accent-fg); }
+		.rd-edge { fill: none; stroke: var(--fg-muted); stroke-width: 2; }
+		.rd-arrowhead { fill: var(--fg-muted); }
+		.rd-pair { grid-template-columns: 1fr 1fr; }
+		.rd-pair figcaption { grid-column: 1 / -1; }
+
+		/* the table of contents */
+		.rd-toc { display: grid; gap: 8px; padding: 16px 20px; border-radius: 14px; background: var(--bg-inset); }
+		.rd-toc b { font-size: var(--rt-text-xs); letter-spacing: var(--tracking-caps, 0.12em); text-transform: uppercase; color: var(--fg-muted); }
+		.rd-toc ol { display: grid; gap: 4px; margin: 0; padding-inline-start: 1.3em; }
+		.rd-toc a { color: var(--fg); text-decoration: none; }
+		.rd-toc a:hover { color: var(--primary-text); text-decoration: underline; }
+
+		/* prose details */
+		.rd-post a:not([class]) { color: var(--primary-text); }
+		.rd-post mark { padding: 0 .2em; border-radius: 4px; background: var(--accent-wash); color: inherit; }
+		.rd-post abbr { text-decoration: underline dotted; cursor: help; }
+		.rd-post sup a { text-decoration: none; }
+		.rd-post ol:not([class]) { display: grid; gap: 6px; margin: 0; padding-inline-start: 1.4em; }
+		.rd-defs { display: grid; grid-template-columns: max-content 1fr; gap: 8px 16px; margin: 0; }
+		.rd-defs dt { font-weight: 600; }
+		.rd-defs dd { margin: 0; color: var(--fg-muted); }
+		.rd-pull { margin: 8px 0; padding: 4px 0 4px 24px; border-inline-start: 4px solid var(--accent); }
+		.rd-pull p { font-family: var(--font-hero); font-size: clamp(20px, 2.6vw, 26px); font-weight: 600; line-height: 1.35; text-wrap: balance; }
+		#read-contrast { min-block-size: 240px; }
+
+		/* the foot: notes and the next read */
+		.rd-foot { display: grid; gap: 20px; }
+		.rd-notes { margin: 0; padding-inline-start: 1.3em; color: var(--fg-muted); font-size: var(--rt-text-xs); }
+		.rd-notes a { color: inherit; }
+
+		@media (max-width: 640px) {
+			.rd-pair { grid-template-columns: 1fr; }
+			.rd-tags { margin-inline-start: 0; }
+		}
+	}
+}

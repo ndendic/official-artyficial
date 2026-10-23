@@ -1,0 +1,217 @@
+/* harbor: cool and technical. Blue-slate grounds in both modes (the cool --fog ramp tinted toward
+   indigo and blue), a deeper blue signal with white ink, a cyan accent family, teal / yellow / red /
+   cyan status hues walked to pass on its own ground, an all-cool chart palette, and instrument
+   figures (--font-figure, the mono). The voice is the console's three faces spoken more quietly:
+   the condensed display face one weight down, the uppercase markers tracked wider.
+   Self-contained: the library's design/themes/harbor.css (Open Props' warm --stone greys, a blue
+   button, an orange mark) with the ribbon-deck shell's completion (polish 4, J4) merged over it,
+   the exact merge the shell's old build.py checked. Since the theme packages
+   (2026-10-10) the library's harbor.css is generated from this file by the theme library build. */
+@layer themes {
+/*DAY*/ body {
+	--harbor-slate: color-mix(in srgb, var(--indigo-12) 22%, var(--fog-12));
+	/* surfaces */
+	--bg: color-mix(in srgb, var(--indigo-1) 42%, var(--fog-2));
+	--bg-elevated: color-mix(in srgb, var(--blue-0) 34%, var(--fog-0));
+	--bg-inset: color-mix(in srgb, var(--indigo-0) 50%, var(--fog-1));
+	--bg-hover: color-mix(in srgb, var(--indigo-1) 40%, var(--fog-3));
+	--bg-cell: color-mix(in srgb, var(--blue-0) 34%, var(--fog-0));
+	--bg-emphasis: color-mix(in srgb, var(--indigo-12) 70%, var(--fog-12));
+	--bg-emphasis-inset: color-mix(in srgb, var(--pure-white) 10%, var(--indigo-12));
+	--bg-emphasis-hover: color-mix(in srgb, var(--pure-white) 16%, var(--indigo-12));
+	--bg-emphasis-inset-hover: color-mix(in srgb, var(--pure-white) 20%, var(--indigo-12));
+	--bg-on-emphasis-well: color-mix(in srgb, var(--pure-white) 9%, transparent);
+	--bg-overlay: color-mix(in srgb, var(--harbor-slate) 38%, transparent);
+	/* foregrounds */
+	--fg: var(--harbor-slate);
+	--fg-muted: color-mix(in srgb, var(--indigo-12) 16%, var(--fog-7));
+	--fg-faint: color-mix(in srgb, var(--indigo-10) 18%, var(--fog-7));
+	--fg-disabled: color-mix(in srgb, var(--indigo-10) 14%, var(--fog-6));
+	--fg-on-emphasis: var(--fog-0);
+	--fg-on-emphasis-muted: color-mix(in srgb, var(--stone-0) 66%, transparent);
+	--fg-on-emphasis-hover: var(--stone-2);
+	/* lines, focus, selection */
+	--border: color-mix(in srgb, var(--indigo-12) 12%, transparent);
+	--border-strong: color-mix(in srgb, var(--indigo-12) 19%, transparent);
+	--border-on-emphasis: color-mix(in srgb, var(--stone-0) 16%, transparent);
+	--border-emphasis-edge: transparent;
+	--ring: var(--blue-8);
+	--selection: color-mix(in srgb, var(--blue-4) 34%, transparent);
+	/* brand: the signal, the quiet and quietest controls, the accent */
+	--primary: var(--blue-8);
+	--primary-fg: var(--fog-0);
+	--primary-hover: var(--blue-9);
+	--primary-active: var(--blue-10);
+	--primary-wash: color-mix(in srgb, var(--blue-8) 12%, transparent);
+	--primary-text: var(--blue-9);
+	--secondary: var(--bg-emphasis);
+	--secondary-fg: var(--fg-on-emphasis);
+	--secondary-hover: var(--bg-emphasis-hover);
+	--secondary-active: var(--bg-emphasis-inset);
+	--secondary-wash: var(--bg-emphasis-inset);
+	--secondary-text: var(--fg);
+	--tertiary: var(--bg-inset);
+	--tertiary-fg: var(--fg);
+	--tertiary-hover: var(--bg-hover);
+	--tertiary-active: var(--bg-hover);
+	--tertiary-wash: var(--bg-inset);
+	--tertiary-text: var(--fg-muted);
+	--accent: var(--cyan-9);
+	--accent-fg: var(--fog-0);
+	--accent-hover: var(--cyan-10);
+	--accent-active: var(--cyan-11);
+	--accent-wash: color-mix(in srgb, var(--cyan-7) 14%, transparent);
+	--accent-text: var(--cyan-10);
+	/* status */
+	--success: var(--teal-5);
+	--success-fg: var(--teal-12);
+	--success-text: var(--teal-10);
+	--success-bg: color-mix(in srgb, var(--teal-5) 16%, transparent);
+	--success-border: color-mix(in srgb, var(--teal-5) 40%, transparent);
+	--success-halo: color-mix(in srgb, var(--teal-5) 28%, transparent);
+	--warning: var(--yellow-4);
+	--warning-fg: var(--yellow-12);
+	--warning-text: var(--yellow-11);
+	--warning-bg: color-mix(in srgb, var(--yellow-4) 22%, transparent);
+	--warning-border: color-mix(in srgb, var(--yellow-4) 48%, transparent);
+	--warning-halo: color-mix(in srgb, var(--yellow-4) 34%, transparent);
+	--danger: var(--red-9);
+	--danger-fg: var(--fog-0);
+	--danger-text: var(--red-10);
+	--danger-bg: color-mix(in srgb, var(--red-6) 14%, transparent);
+	--danger-border: color-mix(in srgb, var(--red-6) 40%, transparent);
+	--danger-halo: color-mix(in srgb, var(--red-6) 28%, transparent);
+	--info: var(--cyan-6);
+	--info-fg: var(--cyan-12);
+	--info-text: var(--cyan-10);
+	--info-bg: color-mix(in srgb, var(--cyan-6) 16%, transparent);
+	--info-border: color-mix(in srgb, var(--cyan-6) 40%, transparent);
+	--info-halo: color-mix(in srgb, var(--cyan-6) 28%, transparent);
+	/* the five showcase slots (chart order) */
+	--showcase-1: var(--blue-8);
+	--showcase-1-fg: var(--fog-0);
+	--showcase-1-text: var(--blue-9);
+	--showcase-1-wash: color-mix(in srgb, var(--blue-6) 14%, transparent);
+	--showcase-2: var(--teal-5);
+	--showcase-2-fg: var(--teal-12);
+	--showcase-2-text: var(--teal-10);
+	--showcase-2-wash: color-mix(in srgb, var(--teal-5) 16%, transparent);
+	--showcase-3: var(--yellow-4);
+	--showcase-3-fg: var(--yellow-12);
+	--showcase-3-text: var(--yellow-11);
+	--showcase-3-wash: color-mix(in srgb, var(--yellow-4) 22%, transparent);
+	--showcase-4: var(--cyan-9);
+	--showcase-4-fg: var(--fog-0);
+	--showcase-4-text: var(--cyan-10);
+	--showcase-4-wash: color-mix(in srgb, var(--orange-5) 18%, transparent);
+	--showcase-5: var(--cyan-6);
+	--showcase-5-fg: var(--cyan-12);
+	--showcase-5-text: var(--cyan-9);
+	--showcase-5-wash: color-mix(in srgb, var(--cyan-6) 16%, transparent);
+	/* the neutral halo */
+	--neutral-halo: color-mix(in srgb, var(--fog-6) 24%, transparent);
+	/* the layer identity, and the same six on the emphasis surface */
+	--layer-base: var(--stone-9);
+	--layer-themes: var(--indigo-9);
+	--layer-patterns: var(--violet-9);
+	--layer-components: var(--teal-10);
+	--layer-utilities: var(--yellow-11);
+	--layer-pages: var(--red-9);
+	--layer-base-on-emphasis: var(--stone-4);
+	--layer-themes-on-emphasis: var(--indigo-3);
+	--layer-patterns-on-emphasis: var(--violet-3);
+	--layer-components-on-emphasis: var(--teal-3);
+	--layer-utilities-on-emphasis: var(--yellow-3);
+	--layer-pages-on-emphasis: var(--red-4);
+	/* roles read ON the emphasis surface */
+	--danger-on-emphasis-text: var(--red-4);
+	--success-on-emphasis-text: var(--teal-3);
+	--warning-on-emphasis-text: var(--yellow-3);
+	--info-on-emphasis-text: var(--cyan-3);
+	--primary-on-emphasis-text: var(--blue-3);
+	--accent-on-emphasis-text: var(--orange-4);
+	/* charts */
+	--chart-1: var(--blue-7);
+	--chart-2: var(--cyan-6);
+	--chart-3: var(--indigo-4);
+	--chart-4: var(--teal-6);
+	--chart-5: var(--fog-6);
+	--chart-6: var(--blue-3);
+	/* elevation */
+	--elevation-color: var(--harbor-slate);
+	--elevation-near: 5%;
+	--elevation-far: 9%;
+	/* voice */
+	--weight-heavy: var(--font-weight-7);
+	--tracking-caps: 0.1em;
+	/* the ribbon-deck shell's dark ribbon floor (pages/_shell.css) */
+	--ribbon-floor: color-mix(in srgb, var(--indigo-12) 40%, var(--pure-black));
+	/* voice: instrument figures */
+	--font-figure: "JetBrains Mono", "JetBrains Mono Fallback", ui-monospace, monospace;
+}
+/*NIGHT*/ body.theme-dark {
+	/* surfaces */
+	--bg: color-mix(in srgb, var(--blue-12) 24%, var(--fog-10));
+	--bg-elevated: color-mix(in srgb, var(--blue-12) 26%, var(--fog-9));
+	--bg-inset: color-mix(in srgb, var(--blue-12) 28%, var(--fog-8));
+	--bg-hover: color-mix(in srgb, var(--blue-12) 28%, var(--fog-8));
+	--bg-cell: color-mix(in srgb, var(--blue-12) 26%, var(--fog-9));
+	--bg-emphasis: color-mix(in srgb, var(--pure-black) 45%, var(--indigo-12));
+	--bg-emphasis-inset: color-mix(in srgb, var(--pure-white) 8%, var(--indigo-12));
+	--bg-emphasis-hover: color-mix(in srgb, var(--pure-white) 14%, var(--indigo-12));
+	--bg-emphasis-inset-hover: color-mix(in srgb, var(--pure-white) 18%, var(--indigo-12));
+	/* foregrounds */
+	--fg: color-mix(in srgb, var(--blue-0) 40%, var(--fog-0));
+	--fg-muted: color-mix(in srgb, var(--indigo-1) 25%, var(--fog-4));
+	--fg-faint: color-mix(in srgb, var(--indigo-2) 22%, var(--fog-4));
+	--fg-disabled: color-mix(in srgb, var(--indigo-2) 20%, var(--fog-5));
+	/* lines and focus */
+	--border: color-mix(in srgb, var(--blue-0) 11%, transparent);
+	--border-strong: color-mix(in srgb, var(--blue-0) 17%, transparent);
+	--border-emphasis-edge: color-mix(in srgb, var(--blue-0) 13%, transparent);
+	--ring: var(--blue-3);
+	/* the signal, the accent and the status fills at night */
+	--primary: var(--blue-8);
+	--primary-fg: var(--fog-0);
+	--primary-hover: var(--blue-9);
+	--primary-active: var(--blue-10);
+	/* every hue read ON the page climbs its ramp */
+	--primary-text: var(--blue-3);
+	--danger-text: var(--red-4);
+	--success-text: var(--teal-3);
+	--warning-text: var(--yellow-3);
+	--info-text: var(--cyan-3);
+	--accent-text: var(--cyan-3);
+	/* the showcase -text slots */
+	--showcase-1-text: var(--blue-3);
+	--showcase-2-text: var(--teal-3);
+	--showcase-3-text: var(--yellow-3);
+	--showcase-4-text: var(--cyan-3);
+	--showcase-5-text: var(--cyan-3);
+	/* the layer identity */
+	--layer-base: var(--stone-4);
+	--layer-themes: var(--indigo-3);
+	--layer-patterns: var(--violet-3);
+	--layer-components: var(--teal-3);
+	--layer-utilities: var(--yellow-3);
+	--layer-pages: var(--red-4);
+	/* elevation */
+	--elevation-color: var(--pure-black);
+	--elevation-near: 32%;
+	--elevation-far: 38%;
+	/* the completion's night roles: inks, fills and charts the shipped night left to the day */
+	--fg-on-emphasis: var(--fog-0);
+	--accent: var(--cyan-9);
+	--accent-fg: var(--fog-0);
+	--accent-hover: var(--cyan-10);
+	--danger: var(--red-9);
+	--danger-fg: var(--fog-0);
+	--chart-1: var(--blue-4);
+	--chart-2: var(--cyan-4);
+	--chart-3: var(--indigo-3);
+	--chart-4: var(--teal-4);
+	--chart-5: var(--fog-5);
+	--chart-6: var(--blue-2);
+	--ribbon-floor: color-mix(in srgb, var(--indigo-12) 45%, var(--pure-black));
+}
+}

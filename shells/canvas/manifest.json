@@ -1,0 +1,107 @@
+{
+	"name": "canvas",
+	"version": "0.1.5",
+	"kind": "shell",
+	"title": "Canvas",
+	"description": "RT Station's scaffold Page Shell until now: a collapsible sidebar with the page tree, a title bar with the stream lamp, the tray and an inspector column. All 7 Patch Regions of the standard Stage.",
+	"entry": "web/index.html",
+	"preview": null,
+	"datastart": {
+		"min": "0.20.1"
+	},
+	"regions": [
+		{
+			"name": "header",
+			"producers": [
+				"http"
+			],
+			"description": "Above the main Patch Region, under the title bar"
+		},
+		{
+			"name": "rail",
+			"producers": [
+				"http"
+			],
+			"description": "Icons beside the navigation"
+		},
+		{
+			"name": "navigation",
+			"producers": [
+				"http"
+			],
+			"description": "Links of the Workspace"
+		},
+		{
+			"name": "main",
+			"description": "The work of the Page"
+		},
+		{
+			"name": "aside",
+			"accept": "capped",
+			"producers": [
+				"arty",
+				"loom",
+				"http"
+			],
+			"description": "Notes an agent adds beside the work"
+		},
+		{
+			"name": "layer",
+			"fill": "personal",
+			"description": "Toasts and notices for one browser"
+		},
+		{
+			"name": "footer",
+			"producers": [
+				"http"
+			],
+			"description": "Status line"
+		}
+	],
+	"plugins": [
+		"LICENSE-on-keys.txt",
+		"LICENSES.md",
+		"anchor.js",
+		"canvas.js",
+		"chart.js",
+		"code-block.js",
+		"code.js",
+		"demo.js",
+		"drag.js",
+		"fold.js",
+		"index.js",
+		"on-keys.js",
+		"persist.js",
+		"resize.js",
+		"scroll.js",
+		"split.js",
+		"toast.js"
+	],
+	"defaultTheme": "bento",
+	"license": "MIT",
+	"files": {
+		".artyficial/extension.json": "sha256:17b5e5742b9506c8067484d844541b28d885c944da7a791cf141defdd2c82653",
+		".artyficial/screenshot-day.webp": "sha256:cc06f6b3bcb213fce14dd0a6ab4c2acc4505a4fdd99e2b3762665d7c149c70e9",
+		".artyficial/screenshot-night.webp": "sha256:06f3bd6200ae060c47939cbf8936d7971fe6a6a1f367ce3c39bed8f5f9d25a14",
+		"LICENSE": "sha256:b23a1e727268b4e1da945af882c0e6a86cf056c3f68ff86527c0bfdb65aecf89",
+		"README.md": "sha256:e22299c26cdb6eee0988c040d9adf3df38918019ac080d0d8a5704cc877b64b1",
+		"web/index.html": "sha256:708a66563bfcb7a176dd2833618a9252c66d8b29e219e0e9dbd56d1dcc4933aa",
+		"web/plugins/LICENSE-on-keys.txt": "sha256:6aa32f105a73e6ab881815c26a1685c383ae95df9349f66ccfae87b5cd829525",
+		"web/plugins/LICENSES.md": "sha256:bb45befbdd00c7d69a20aa48b4b29211db17ad84e385a3d9b303faec6acfbaf7",
+		"web/plugins/anchor.js": "sha256:cabd7f30321158be203ba46dfe63e4d2cabcc1404538bf70b63bf4f0b6152dec",
+		"web/plugins/canvas.js": "sha256:6f4befab59be215f0238310ee7d4d6d04ea51b5bbb5320250b115f0c3f334d7d",
+		"web/plugins/chart.js": "sha256:ef28b8b610749d5a732bbd8afd1c7fbdbf3fdaf66774653503ecd9f2d6661b61",
+		"web/plugins/code-block.js": "sha256:0f9b9314c48c0c0adc2787ab77cde85c2663a3a97ef8ab915db8371bceb3b7d2",
+		"web/plugins/code.js": "sha256:9089058d792befcc09cc995b5b10d607763e996c2ea7f4afeba52fa2c6b5e205",
+		"web/plugins/demo.js": "sha256:92f672129ebb885c53355314033742c0feccb348b85f6c94b1465e154adafa4c",
+		"web/plugins/drag.js": "sha256:75c5fb2423e9b4d1a3cd3c03ff9185810e3f6589f174770f397fe48d9b05aece",
+		"web/plugins/fold.js": "sha256:f8b72287387191be1df0068e4738986e3c4b762229cb337c17d027cc95c868b2",
+		"web/plugins/index.js": "sha256:ccd2b6ddc97c5d8c46a37d09c05aeb486e2ce9181b420182dd8ae18f5e939e21",
+		"web/plugins/on-keys.js": "sha256:b3e263d08dd9b28fcac8d825a3d08b07b5f6799d9c383afd740636ba45633029",
+		"web/plugins/persist.js": "sha256:1b802163fd11523ef8b6df286bc8a990fbe931408c5752428b6d4432aa1a4918",
+		"web/plugins/resize.js": "sha256:4728102cd506441c8873d5fb1bb3fdc8ece087a13a8c50216eae6f9163a8e649",
+		"web/plugins/scroll.js": "sha256:0d7dda34365006b8671471a09ac351111698771aa30b67bb7bd198eab961a740",
+		"web/plugins/split.js": "sha256:d2ec0065944facb075b7dde57bb254efafe8e9f87237e8647f56efd984455034",
+		"web/plugins/toast.js": "sha256:7f20b1e285c7779cc4286c3bf0e88160d77a790db5d1dff118a0d6e772d80ffc"
+	}
+}

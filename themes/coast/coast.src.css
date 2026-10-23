@@ -1,0 +1,183 @@
+/* coast — warm coastal. Wheat paper by day and Onyx water by night, Oceanic as
+   the one decisive action, Nectarine as the warm mark (a filled shape, never thin
+   text on Wheat: 1.5:1). From Jenny Henderson Studio's "Onyx, Wheat, Oceanic,
+   Nectarine" board. Figures in mono, like the board's tables. */
+@layer themes {
+/*DAY*/ body {
+	/* the board's four colours, named once; every role below is made of them */
+	--coast-onyx: #0a171d;
+	--coast-wheat: #fff6e9;
+	--coast-oceanic: #003f47;
+	--coast-nectarine: #ffbd76;
+	--bg: color-mix(in srgb, var(--coast-onyx) 5%, var(--coast-wheat));
+	--bg-elevated: color-mix(in srgb, var(--pure-white) 55%, var(--coast-wheat));
+	--bg-inset: var(--coast-wheat);
+	--bg-hover: color-mix(in srgb, var(--coast-onyx) 8%, var(--coast-wheat));
+	--bg-cell: color-mix(in srgb, var(--pure-white) 55%, var(--coast-wheat));
+	--bg-emphasis: var(--coast-onyx);
+	--bg-emphasis-inset: color-mix(in srgb, var(--pure-white) 9%, var(--coast-onyx));
+	--bg-emphasis-hover: color-mix(in srgb, var(--pure-white) 13%, var(--coast-onyx));
+	--bg-emphasis-inset-hover: color-mix(in srgb, var(--pure-white) 17%, var(--coast-onyx));
+	--bg-on-emphasis-well: color-mix(in srgb, var(--pure-white) 8%, transparent);
+	--bg-overlay: color-mix(in srgb, var(--coast-onyx) 38%, transparent);
+	--fg: var(--coast-onyx);
+	--fg-muted: color-mix(in srgb, var(--coast-onyx) 70%, var(--coast-wheat));
+	--fg-faint: color-mix(in srgb, var(--coast-onyx) 62%, var(--coast-wheat));
+	--fg-disabled: color-mix(in srgb, var(--coast-onyx) 50%, var(--coast-wheat));
+	--fg-on-emphasis: var(--coast-wheat);
+	--fg-on-emphasis-muted: color-mix(in srgb, var(--coast-wheat) 76%, transparent);
+	--fg-on-emphasis-hover: var(--pure-white);
+	--border: color-mix(in srgb, var(--coast-onyx) 10%, transparent);
+	--border-strong: color-mix(in srgb, var(--coast-onyx) 17%, transparent);
+	--border-on-emphasis: color-mix(in srgb, var(--coast-wheat) 16%, transparent);
+	--border-emphasis-edge: transparent;
+	--ring: var(--coast-oceanic);
+	--selection: color-mix(in srgb, var(--coast-nectarine) 45%, transparent);
+	/* the action: Oceanic with white ink (11.7:1) */
+	--primary: var(--coast-oceanic);
+	--primary-fg: var(--pure-white);
+	--primary-hover: color-mix(in srgb, var(--pure-white) 12%, var(--coast-oceanic));
+	--primary-active: color-mix(in srgb, var(--coast-onyx) 35%, var(--coast-oceanic));
+	--primary-wash: color-mix(in srgb, var(--coast-oceanic) 10%, transparent);
+	--primary-text: var(--coast-oceanic);
+	/* the warm mark: a Nectarine fill with Onyx ink (11.1:1); as text it darkens to a burnt orange */
+	--accent: var(--coast-nectarine);
+	--accent-fg: var(--coast-onyx);
+	--accent-hover: color-mix(in srgb, var(--pure-white) 18%, var(--coast-nectarine));
+	--accent-active: color-mix(in srgb, var(--coast-onyx) 10%, var(--coast-nectarine));
+	--accent-wash: color-mix(in srgb, var(--coast-nectarine) 26%, transparent);
+	--accent-text: color-mix(in srgb, var(--coast-onyx) 55%, var(--orange-9));
+	--success: var(--green-4);
+	--success-fg: var(--coast-onyx);
+	--success-text: var(--green-10);
+	--success-bg: color-mix(in srgb, var(--green-4) 18%, transparent);
+	--success-border: color-mix(in srgb, var(--green-4) 45%, transparent);
+	--success-halo: color-mix(in srgb, var(--green-4) 30%, transparent);
+	--warning: var(--yellow-4);
+	--warning-fg: var(--coast-onyx);
+	--warning-text: var(--yellow-11);
+	--warning-bg: color-mix(in srgb, var(--yellow-4) 22%, transparent);
+	--warning-border: color-mix(in srgb, var(--yellow-4) 50%, transparent);
+	--warning-halo: color-mix(in srgb, var(--yellow-4) 34%, transparent);
+	--danger: var(--red-8);
+	--danger-fg: var(--pure-white);
+	--danger-text: var(--red-10);
+	--danger-bg: color-mix(in srgb, var(--red-8) 11%, transparent);
+	--danger-border: color-mix(in srgb, var(--red-8) 38%, transparent);
+	--danger-halo: color-mix(in srgb, var(--red-8) 24%, transparent);
+	--info: var(--cyan-9);
+	--info-fg: var(--pure-white);
+	--info-text: var(--cyan-11);
+	--info-bg: color-mix(in srgb, var(--cyan-9) 12%, transparent);
+	--info-border: color-mix(in srgb, var(--cyan-9) 38%, transparent);
+	--info-halo: color-mix(in srgb, var(--cyan-9) 24%, transparent);
+	--showcase-1: var(--coast-oceanic);   --showcase-1-fg: var(--pure-white);  --showcase-1-text: var(--coast-oceanic); --showcase-1-wash: color-mix(in srgb, var(--coast-oceanic) 10%, transparent);
+	--showcase-2: var(--coast-nectarine); --showcase-2-fg: var(--coast-onyx);  --showcase-2-text: color-mix(in srgb, var(--coast-onyx) 55%, var(--orange-9)); --showcase-2-wash: color-mix(in srgb, var(--coast-nectarine) 26%, transparent);
+	--showcase-3: var(--coast-onyx);      --showcase-3-fg: var(--coast-wheat); --showcase-3-text: var(--coast-onyx);    --showcase-3-wash: color-mix(in srgb, var(--coast-onyx) 8%, transparent);
+	--showcase-4: var(--cyan-3);          --showcase-4-fg: var(--coast-onyx);  --showcase-4-text: var(--cyan-11);       --showcase-4-wash: color-mix(in srgb, var(--cyan-3) 26%, transparent);
+	--showcase-5: var(--yellow-3);        --showcase-5-fg: var(--coast-onyx);  --showcase-5-text: var(--yellow-11);     --showcase-5-wash: color-mix(in srgb, var(--yellow-3) 26%, transparent);
+	--neutral-halo: color-mix(in srgb, var(--coast-onyx) 14%, transparent);
+	--danger-on-emphasis-text: var(--red-3);
+	--success-on-emphasis-text: var(--green-3);
+	--warning-on-emphasis-text: var(--yellow-2);
+	--info-on-emphasis-text: var(--cyan-2);
+	--primary-on-emphasis-text: var(--coast-nectarine);
+	--accent-on-emphasis-text: var(--coast-nectarine);
+	/* the board's colours first, then their tints */
+	--chart-1: var(--coast-oceanic);
+	--chart-2: var(--coast-nectarine);
+	--chart-3: color-mix(in srgb, var(--coast-oceanic) 45%, var(--coast-wheat));
+	--chart-4: color-mix(in srgb, var(--coast-onyx) 72%, var(--coast-wheat));
+	--chart-5: color-mix(in srgb, var(--coast-nectarine) 55%, var(--coast-oceanic));
+	--chart-6: color-mix(in srgb, var(--coast-onyx) 28%, var(--coast-wheat));
+	--elevation-color: var(--coast-onyx);
+	--elevation-near: 5%;
+	--elevation-far: 9%;
+	/* voice: the board's geometric sans, set heavy and open; figures in mono like its tables.
+	   Albert Sans ships 400-700 only: heavy must be 700 or the browser fakes it. */
+	--font-hero: "Albert Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	--weight-heavy: var(--font-weight-7);
+	--tracking-hero: 0.01em;
+	--tracking-title: 0;
+	--tracking-caps: 0.14em;
+	/* completed from the floor (the library's bento.css), so the theme never falls back on another theme: the -secondary and -tertiary aliases follow this theme's own roles; the layer identity is Bento's */
+	--secondary: var(--bg-emphasis);
+	--secondary-fg: var(--fg-on-emphasis);
+	--secondary-hover: var(--bg-emphasis-hover);
+	--secondary-active: var(--bg-emphasis-inset);
+	--secondary-wash: var(--bg-emphasis-inset);
+	--secondary-text: var(--fg);
+	--tertiary: var(--bg-inset);
+	--tertiary-fg: var(--fg);
+	--tertiary-hover: var(--bg-hover);
+	--tertiary-active: var(--bg-hover);
+	--tertiary-wash: var(--bg-inset);
+	--tertiary-text: var(--fg-muted);
+	--layer-base: var(--fog-7);
+	--layer-themes: var(--blue-9);
+	--layer-patterns: var(--iris-11);
+	--layer-components: var(--mint-11);
+	--layer-utilities: var(--butter-11);
+	--layer-pages: var(--coral-11);
+	--layer-base-on-emphasis: var(--fog-4);
+	--layer-themes-on-emphasis: var(--blue-3);
+	--layer-patterns-on-emphasis: var(--iris-8);
+	--layer-components-on-emphasis: var(--mint-8);
+	--layer-utilities-on-emphasis: var(--butter-8);
+	--layer-pages-on-emphasis: var(--coral-8);
+	/* the Ribbon & Sheet ribbon floor: Onyx, deepened */
+	--ribbon-floor: color-mix(in srgb, var(--pure-black) 35%, var(--coast-onyx));
+}
+/*NIGHT*/ body.theme-dark {
+	--bg: color-mix(in srgb, var(--pure-black) 18%, var(--coast-onyx));
+	--bg-elevated: color-mix(in srgb, var(--pure-white) 5%, var(--coast-onyx));
+	--bg-inset: color-mix(in srgb, var(--pure-white) 9%, var(--coast-onyx));
+	--bg-hover: color-mix(in srgb, var(--pure-white) 13%, var(--coast-onyx));
+	--bg-cell: color-mix(in srgb, var(--pure-white) 5%, var(--coast-onyx));
+	--bg-emphasis: color-mix(in srgb, var(--pure-black) 45%, var(--coast-onyx));
+	--bg-emphasis-inset: color-mix(in srgb, var(--pure-white) 8%, var(--coast-onyx));
+	--fg: var(--coast-wheat);
+	--fg-muted: color-mix(in srgb, var(--coast-wheat) 74%, var(--coast-onyx));
+	--fg-faint: color-mix(in srgb, var(--coast-wheat) 62%, var(--coast-onyx));
+	--fg-disabled: color-mix(in srgb, var(--coast-wheat) 42%, var(--coast-onyx));
+	--border: color-mix(in srgb, var(--coast-wheat) 10%, transparent);
+	--border-strong: color-mix(in srgb, var(--coast-wheat) 17%, transparent);
+	--border-emphasis-edge: color-mix(in srgb, var(--coast-wheat) 12%, transparent);
+	--ring: var(--coast-nectarine);
+	/* at night the action is Nectarine with Onyx ink (11.1:1): Oceanic is too deep to act on Onyx */
+	--primary: var(--coast-nectarine);
+	--primary-fg: var(--coast-onyx);
+	--primary-hover: color-mix(in srgb, var(--pure-white) 18%, var(--coast-nectarine));
+	--primary-text: var(--coast-nectarine);
+	/* and the mark turns to Oceanic, lifted so it reads on Onyx */
+	--accent: color-mix(in srgb, var(--pure-white) 14%, var(--coast-oceanic));
+	--accent-fg: var(--coast-wheat);
+	--accent-text: var(--cyan-3);
+	--danger-text: var(--red-3);
+	--success-text: var(--green-3);
+	--warning-text: var(--yellow-3);
+	--info-text: var(--cyan-3);
+	--showcase-1-text: var(--cyan-3);
+	--showcase-2-text: var(--coast-nectarine);
+	--showcase-3-text: var(--coast-wheat);
+	--showcase-4-text: var(--cyan-2);
+	--showcase-5-text: var(--yellow-3);
+	/* the charts at night: Oceanic itself vanishes on Onyx, so series 1 is Oceanic lifted to a sea glass */
+	--chart-1: color-mix(in srgb, var(--cyan-4) 70%, var(--coast-oceanic));
+	--chart-2: var(--coast-nectarine);
+	--chart-3: color-mix(in srgb, var(--cyan-2) 55%, var(--coast-onyx));
+	--chart-4: color-mix(in srgb, var(--coast-wheat) 72%, var(--coast-onyx));
+	--chart-5: color-mix(in srgb, var(--coast-nectarine) 55%, var(--cyan-4));
+	--chart-6: color-mix(in srgb, var(--coast-wheat) 38%, var(--coast-onyx));
+	--elevation-color: var(--pure-black);
+	--elevation-near: 30%;
+	--elevation-far: 38%;
+	/* completed from the floor (the library's dark.css): the layer identity at night is Bento's */
+	--layer-base: var(--fog-4);
+	--layer-themes: var(--blue-3);
+	--layer-patterns: var(--iris-8);
+	--layer-components: var(--mint-8);
+	--layer-utilities: var(--butter-8);
+	--layer-pages: var(--coral-8);
+}
+}

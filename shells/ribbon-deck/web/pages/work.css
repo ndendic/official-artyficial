@@ -1,0 +1,72 @@
+/* pages/work.css (layer: pages): the Operations page, arrangement only. */
+@layer pages {
+	body[data-page="work"] {
+		#main { row-gap: 16px; }
+		/* the title line is the shell's (it docks on scroll); the head holds the tools */
+		.w-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px 16px; }
+		/* wide: the tools stand on the title line's row, centred on the h1
+		   (the 30px tools and the h1's line box share one middle) */
+		@container (min-width: 640px) { .w-head { margin-block-start: -71px; } }
+		.w-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+		/* narrow (J6): the tools take the whole row, the range at its start and
+		   the action at its end, on one line: never a ragged right-aligned cluster */
+		@container (max-width: 639px) { .w-head { justify-content: stretch; } .w-tools { flex: 1 1 100%; flex-wrap: nowrap; justify-content: space-between; } }
+		.w-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+		@container (max-width: 1000px) { .w-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+		@container (max-width: 520px) { .w-kpis { gap: 10px; } .w-figure { font-size: 24px; } }
+		.w-kpi { min-block-size: 150px; }
+		.w-kpi > header { gap: 8px; }
+		.w-kpi > header > .card-action { flex-shrink: 0; }
+		.w-kpi > header > h3 { min-inline-size: 0; margin: 0; font-size: var(--rt-text-sm); font-weight: var(--rt-weight-semibold); }
+		.w-kpi-body { display: grid; gap: 8px; margin-block-start: auto; }
+		/* the sparkline's plot sits 6px inside its own svg (room for the end dot):
+		   pulled out by that much, the line starts on the label's and the figure's
+		   edge instead of 6px in, and the end dot overhangs by its radius */
+		.w-kpi-body > rt-chart[type="sparkline"] { inline-size: calc(100% + 12px); margin-inline: -6px; }
+		.w-figure { display: block; font-family: var(--figure-face, inherit); font-size: 30px; font-weight: var(--figure-weight, var(--rt-weight-semibold)); line-height: 1; letter-spacing: var(--figure-tracking, -0.01em); font-variant-numeric: lining-nums tabular-nums; }
+		.w-trend { grid-column: span 8; }
+		.w-mix { grid-column: span 4; }
+		.w-orders { grid-column: 1 / -1; }
+		@container (max-width: 1000px) { .w-trend, .w-mix { grid-column: 1 / -1; } }
+		.w-trend h3, .w-mix h3, .w-orders h3 { margin: 0; font-size: var(--rt-text-base, 15px); font-weight: var(--rt-weight-semibold); }
+		#ops-trend-chart { --rt-chart-5: var(--rt-faint-foreground); }
+		/* the comparison series is a line with a quiet wash: at the library's full
+		   wash its faint ink stacked under this period's fill into a heavy dark
+		   mass, the loudest thing on the page (polish 4 craft) */
+		#ops-trend-chart path.rt-chart-area:first-of-type { fill-opacity: 0.4; }
+		.w-mix > section > rt-chart { inline-size: 100%; }
+		/* before its code lands a chart holds its final height (plot + legend),
+		   so the upgrade never shifts the cards below it */
+		#ops-trend-chart:not(:defined) { min-block-size: 294px; }
+		#ops-mix-chart:not(:defined) { min-block-size: 280px; }
+		/* narrow KPI cards: the delta badge sits under its label, never against it */
+		@container (max-width: 520px) {
+			.w-kpi > header { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+			.w-kpi > header > .card-action { margin: 0; }
+		}
+		/* narrow orders: each row becomes a two-line entry (who · total, then
+		   channel · date · status), so no column is ever cut off */
+		@container (max-width: 560px) {
+			.w-orders .rt-table thead { display: none; }
+			.w-orders .rt-table-container { overflow: visible; }
+			.w-orders .rt-table, .w-orders .rt-table tbody { display: block; inline-size: 100%; }
+			.w-orders .rt-table tbody tr { position: relative; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 10px 4px 10px 36px; border-block-end: 1px solid var(--rt-border); }
+			.w-orders .rt-table tbody tr::after { content: ""; order: 2; flex-basis: 100%; block-size: 0; }
+			.w-orders .rt-table tbody td { display: block; padding: 0; border: 0; white-space: nowrap; }
+			.w-orders .rt-table tbody td:nth-child(1 of td) { position: absolute; inset-block-start: 50%; inset-inline-start: 4px; translate: 0 -50%; }
+			.w-orders .rt-table tbody td:nth-child(2 of td) { order: 1; color: var(--rt-muted-foreground); font-variant-numeric: tabular-nums; }
+			.w-orders .rt-table tbody td:nth-child(3 of td) { order: 1; flex: 1 1 0; min-inline-size: 0; overflow: hidden; font-weight: var(--rt-weight-medium); text-overflow: ellipsis; }
+			.w-orders .rt-table tbody td:nth-child(7 of td) { order: 1; margin-inline-start: auto; font-variant-numeric: tabular-nums; }
+			.w-orders .rt-table tbody td:nth-child(4 of td), .w-orders .rt-table tbody td:nth-child(6 of td) { order: 3; color: var(--rt-muted-foreground); font-size: var(--rt-text-xs); }
+			.w-orders .rt-table tbody td:nth-child(6 of td)::before { content: "·"; margin-inline-end: 8px; }   /* 8px either side of the dot (the row gap is the other) */
+			.w-orders .rt-table tbody td:nth-child(5 of td) { order: 4; margin-inline-start: auto; }
+			.w-orders .rt-table tbody td[colspan] { position: static; translate: none; flex-basis: 100%; white-space: normal; }
+			/* the empty state ("No orders match this filter.") is one centred line
+			   in its row's own box, under the filter: never the absolute first-cell
+			   placement above, which lifted it over the filter's value (J6) */
+			.w-orders .rt-table tbody tr[data-empty] { display: block; padding: 0; }
+			.w-orders .rt-table tbody tr[data-empty] > td { position: static; display: grid; place-items: center; inset: auto; translate: none; block-size: 6rem; padding: 0 12px; color: var(--rt-muted-foreground); text-align: center; white-space: normal; }
+		}
+		.w-orders caption { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+	}
+}

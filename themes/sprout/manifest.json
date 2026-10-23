@@ -1,0 +1,31 @@
+{
+	"name": "sprout",
+	"version": "1.0.4",
+	"kind": "theme",
+	"title": "Sprout",
+	"description": "Playful: a warm cream ground, white cards, a grape-violet emphasis surface and tangerine as the signal, with a friendly hero face.",
+	"entry": "sprout.css",
+	"preview": null,
+	"datastart": {
+		"min": "0.20.1"
+	},
+	"modes": [
+		"day",
+		"night"
+	],
+	"faces": [
+		"Albert Sans",
+		"JetBrains Mono"
+	],
+	"license": "MIT",
+	"files": {
+		".artyficial/extension.json": "sha256:36f8758f4bf89eddc3bec5d6ee306758f0bbc51811353917c4498d4c63777543",
+		".artyficial/screenshot-day.webp": "sha256:313efa1259f1f37dc0f0ebffef1f315c394667572882519464ed4ed97252e433",
+		".artyficial/screenshot-night.webp": "sha256:edc5741954320a4737395f6c7ddcd013e42dfa732ed847f39cfd5f4d8f439253",
+		"LICENSE": "sha256:b23a1e727268b4e1da945af882c0e6a86cf056c3f68ff86527c0bfdb65aecf89",
+		"README.md": "sha256:be7b82f4b375e349658f2f81bf2d69be8da0b10840bf9af3356f260c9b199bc8",
+		"sprout.css": "sha256:9c2101ef88870326f5403261231967533fe8c7ec880d9e70b1ab5d1318902f52",
+		"sprout.default.css": "sha256:200a56eee831077461f3d2e36a74d2f1205d4ac14c8f3903a29f986db411156d",
+		"sprout.src.css": "sha256:ccc483390bb880cd9525f9eb9f58c2212ceabf7b3627fb5934000b387fa7e323"
+	}
+}

@@ -1,0 +1,602 @@
+/* pill.css: the AI pill in the sheet's bar (@layer shell), linked by
+ * index.html after _shell.css. Ported from the critique-pill shell: a hairline at
+ * rest that unfolds into a prompt; tool dots that bloom into labelled chips; a
+ * panel per tool that grows upward. Here it lives INSIDE the sheet (centred in
+ * the bar, never over content) and its palette pane replaces the Ctrl/⌘ K dialog.
+ * Colours read the shell's tokens (_shell.css); motion is transform, opacity and
+ * filter only, driven by the springs in plugins/pill.js (--pill-k, --pill-c).
+ */
+/* the palette pane's side insets (pill.js writes them from the pill's live width) */
+@property --cmd-x { syntax: '<length>'; inherits: false; initial-value: -48px; }
+@layer shell {
+	body {
+		--pill-h: 40px;                 /* the open pill (the bar is --bar-h, 52px) */
+		--pill-rest-w: 76px;            /* the resting line */
+		--pill-rest-h: 4px;
+		--pill-field-w: 300px;          /* the prompt field on a desktop */
+		--pill-panel-w: 288px;
+		--pill-cmd-w: 560px;            /* the palette pane */
+		--pill-k: 440;                  /* spring stiffness (pill.js) */
+		--pill-c: 36;                   /* spring damping (pill.js); 2·√k ≈ 42 is critical */
+		--pill-ground: var(--lens);     /* a card on the sheet (dark: the lighter step) */
+		--pill-ink: var(--rt-foreground);
+		--pill-quiet: var(--ink-quiet);
+		--pill-edge: var(--lens-ring);
+		--pill-wash: color-mix(in oklab, var(--rt-foreground) 7%, transparent);
+		/* the resting line is the assistant's only visible way in: an opaque
+		   mid tone, at least 3:1 against the sheet in both schemes */
+		--pill-line: color-mix(in oklab, var(--rt-foreground) 52%, var(--sheet));
+		--pill-shadow: 0 1px 2px color-mix(in srgb, var(--rt-foreground) 8%, transparent), 0 6px 16px -8px color-mix(in srgb, var(--rt-foreground) 22%, transparent);
+		--pill-float: 0 1px 2px color-mix(in srgb, var(--rt-foreground) 8%, transparent), 0 14px 36px -14px color-mix(in srgb, var(--rt-foreground) 34%, transparent);
+		--pill-ask: var(--rt-muted-foreground);   /* the default mode is neutral */
+		--pill-draft: var(--success);
+		--pill-explain: var(--accent);
+		/* a soft spring (zeta 0.72) for CSS-driven blooms, and the pill's exit */
+		--ease-bloom: linear(0, 0.039, 0.134, 0.258, 0.393, 0.524, 0.644, 0.748, 0.833, 0.901, 0.952, 0.989, 1.013, 1.028, 1.036, 1.038, 1.037, 1.034, 1.029, 1.024, 1.019, 1.014, 1.01, 1.007, 1.004, 1.002, 1.001, 1);
+		--dur-bloom: 380ms;
+		--pill-ease-exit: cubic-bezier(.23, 1, .32, 1);   /* fast and decelerating */
+		--pill-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+	}
+	/* the palette is the one surface that floats over the page: a real lift */
+	body { --pill-lift: 0 1px 0 color-mix(in oklab, var(--rt-foreground) 6%, transparent), 0 24px 48px -12px rgb(0 0 0 / 0.24); }
+	body.theme-dark { --pill-line: color-mix(in oklab, var(--rt-foreground) 46%, var(--sheet)); --pill-shadow: 0 0 0 0 transparent; --pill-float: 0 18px 40px -16px rgb(0 0 0 / 0.6); --pill-lift: 0 0 0 1px rgb(255 255 255 / 0.04), 0 28px 60px -12px rgb(0 0 0 / 0.75); }
+	@media (prefers-reduced-motion: reduce) { body { --dur-bloom: 0ms; } }
+	html.pv-hidden * { animation-play-state: paused !important; }
+
+	/* the dismiss button of a reply */
+	.pv-x { margin-inline-start: auto; display: grid; place-items: center; inline-size: 30px; block-size: 30px; border: 0; border-radius: 50%; background: none; color: var(--fg-muted); cursor: pointer; transition: background-color var(--rt-dur-tint) var(--rt-ease-tint), scale var(--rt-dur-press) var(--rt-ease-tint); }
+	.pv-x:hover { background: var(--pill-wash); color: var(--fg); }
+	.pv-x:active { scale: .92; }
+	.pv-x svg { inline-size: 16px; block-size: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+	/* #layer: replies stacked just above the pill (geometry in _shell.css) */
+	#layer > * { pointer-events: auto; padding: 12px 14px; border-radius: 18px; background: var(--pill-ground); color: var(--fg); box-shadow: 0 0 0 1px var(--pill-edge), var(--pill-float); font-size: 14px; line-height: 1.5; }
+	body[data-pill-panel] #layer { opacity: 0; pointer-events: none; transition: opacity 120ms linear; }
+
+	/* ── THE PILL ──────────────────────────────────────────────────────── */
+	/* .pill is also a library class (a button look, and a scope limit for the
+	   default button style): the first rule takes the look back off */
+	.pill, .pill:hover, .pill:active:not(:disabled) { padding: 0; border-radius: 0; background: none; color: var(--fg); font-size: inherit; font-weight: inherit; line-height: normal; letter-spacing: normal; white-space: normal; text-decoration: none; cursor: auto; transform: none; transition: none; }
+	.pill { position: absolute; z-index: 2; inset: 0; display: grid; grid-template: 100% / 100%; place-items: center; pointer-events: none; --near: 0;
+		/* the pill's laid-out height (the row) and its ground's live height (a
+		   spring): both --pill-h at one line; pill.js writes them for a
+		   multiline prompt. The pill grows UPWARD: the row and the ground keep
+		   their bottom where the one-line pill's bottom is (a negative top
+		   margin of the growth, so their centred margin box stays --pill-h) */
+		--pill-hh: var(--pill-h); --pill-gh: var(--pill-hh); --pill-r: calc(var(--pill-h) / 2); }
+	.pill > :not(.pill-panel) { grid-area: 1 / 1; }
+	.pill svg { inline-size: 16px; block-size: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+	.pill kbd { font: 500 11px/1 var(--font-mono); }
+
+	/* the hover zone: generous, so the pill is found without aiming */
+	.pill-zone { inline-size: min(440px, 100%); block-size: 100%; pointer-events: auto; }
+	.pill[data-level="0"] .pill-zone { cursor: pointer; }
+	.pill:not([data-level="0"]) .pill-zone { pointer-events: none; }
+
+	/* level 0: one hairline, brightening and widening as the pointer nears */
+	.pill-rest { position: relative; display: grid; place-items: center; inline-size: 132px; block-size: 32px; padding: 0; border: 0; border-radius: 999px; background: none; color: var(--fg); cursor: pointer; pointer-events: auto; outline: none;
+		/* the line comes back only once the ground has mostly folded away: one material, not two */
+		transition: opacity 180ms var(--rt-ease-arrive) 150ms, scale 360ms var(--rt-ease-arrive) 110ms; }
+	/* the library's focus ring is a heavy capsule: focus speaks through the line and the hint instead */
+	#pill .pill-rest:focus, #pill .pill-rest:focus-visible { outline: none; box-shadow: none; }
+	.pill-line { inline-size: var(--pill-rest-w); block-size: var(--pill-rest-h); border-radius: 999px; background: var(--pill-line);
+		opacity: 1; scale: calc(1 + .3 * var(--near)); transition: opacity 60ms linear, scale 60ms linear; }
+	.pill-rest:focus-visible:not([data-quiet]) .pill-line { background: var(--ring); opacity: 1; scale: 1.15; }
+	.pill-rest:focus-visible .pill-hint { opacity: 1; translate: 0 0; }
+	.pill-rest[data-quiet]:focus-visible .pill-hint { opacity: .7; }
+	.pill-hint { position: absolute; inset-block-end: 26px; padding: 2px 6px; border-radius: 6px; background: var(--pill-ground); color: var(--fg-muted); box-shadow: 0 0 0 1px var(--pill-edge);
+		opacity: clamp(0, calc((var(--near) - .55) * 3), 1); translate: 0 calc(4px - 4px * var(--near)); transition: opacity 140ms linear, translate 140ms linear; }
+	.pill-draft { position: absolute; inset-inline-start: calc(50% + var(--pill-rest-w) / 2 + 8px); inline-size: 5px; block-size: 5px; border-radius: 50%; background: var(--fg-muted); opacity: 0; scale: .4; transition: opacity 160ms linear, scale 300ms var(--ease-bloom); }
+	.pill[data-draft] .pill-draft { opacity: 1; scale: 1; }
+	.pill:not([data-level="0"]) .pill-rest { opacity: 0; scale: 2.2 .4; pointer-events: none; transition: opacity 180ms var(--pill-ease-exit), scale 260ms var(--rt-ease-arrive); }
+	/* reduced: the two faces never share a frame. Opening, the line goes at
+	   once and the ground fades in (~120ms); closing, the ground fades out and
+	   only then does the line come back */
+	@media (prefers-reduced-motion: reduce) { .pill-line, .pill-hint { transition: opacity 120ms linear; } .pill-rest { transition: opacity 100ms linear 130ms; } .pill:not([data-level="0"]) .pill-rest { transition: none; } .pill-line, .pill-rest:focus-visible:not([data-quiet]) .pill-line { scale: 1; } .pill:not([data-level="0"]) .pill-rest { scale: 1; } }
+
+	/* the ground of the open pill: two clipped halves that spring apart, so
+	   width changes are pure transforms and the round ends never distort */
+	.pill-bg { position: relative; inline-size: 100%; block-size: var(--pill-gh); margin-block-start: calc(var(--pill-h) - var(--pill-gh)); pointer-events: none; opacity: 0; }
+	.pill-clip { position: absolute; inset-block: -40px; overflow: hidden; }
+	.pill-clip[data-side="l"] { inset-inline: 0 50%; }
+	.pill-clip[data-side="r"] { inset-inline: 50% 0; }
+	/* the radius is half the ONE-line height: at one line a capsule, exactly as
+	   before; taller (multiline) the same 20px corners on a rounded rectangle */
+	.pill-half { position: absolute; inset-block-start: 40px; block-size: var(--pill-gh); inline-size: calc(50vw + 64px); border-radius: var(--pill-r); background: var(--pill-ground); box-shadow: 0 0 0 1px var(--pill-edge), var(--pill-shadow); transition: box-shadow var(--rt-dur-tint) var(--rt-ease-tint); }
+	.pill-clip[data-side="l"] .pill-half { inset-inline-start: 100%; }
+	.pill-clip[data-side="r"] .pill-half { inset-inline-end: 100%; }
+	.pill:has(#pill-input:focus) .pill-half { box-shadow: 0 0 0 1px color-mix(in oklab, var(--ring) 55%, transparent), var(--pill-shadow); }
+	.pill:has(#pill-input:focus-visible) .pill-half { box-shadow: 0 0 0 2px var(--ring), var(--pill-shadow); }
+
+	/* level 1: the row (a toolbar); chips are dots or icons until they bloom */
+	.pill-row { position: relative; display: flex; align-items: center; gap: 2px; block-size: var(--pill-h); margin: 0; padding-inline: 6px; pointer-events: auto;
+		/* the row is clipped to the ground (pill.js writes --gw each frame): no part can ever render outside the pill */
+			/* (its top follows the ground's live height: a growing pill uncovers its upper lines as the ground rises) */
+			clip-path: inset(calc(var(--pill-hh) - var(--pill-gh)) calc(50% - var(--gw, 9999px) / 2 - var(--gdx, 0px)) 0 calc(50% - var(--gw, 9999px) / 2 + var(--gdx, 0px)) round var(--pill-r)); }
+	.pill[data-level="0"] .pill-row { pointer-events: none; }
+	.pill[data-level="0"] .pill-row > * { opacity: 0; }
+	.pill-chip { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 7px; flex: none; block-size: 32px; min-inline-size: 32px; padding: 0 8px; border: 0; border-radius: 999px; background: none; color: var(--pill-quiet); font: 500 13px/1 var(--font-ui); white-space: nowrap; cursor: pointer; outline: none; -webkit-tap-highlight-color: transparent;
+		transition: color var(--rt-dur-tint) var(--rt-ease-tint); }
+	.pill-chip::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: var(--pill-wash); opacity: 0; scale: .6; transition: opacity 140ms var(--rt-ease-tint), scale 380ms var(--ease-bloom); }
+	.pill-chip > * { position: relative; }
+	.pill-chip[data-bloom], .pill-chip[aria-expanded="true"], .pill-chip[aria-pressed="true"] { color: var(--pill-ink); }
+	.pill-chip[data-bloom]::before, .pill-chip[aria-expanded="true"]::before, .pill-chip[aria-pressed="true"]::before { opacity: 1; scale: 1; }
+	.pill-chip:active::before { opacity: 1; scale: .9; transition: opacity 0ms, scale 80ms var(--rt-ease-tint); }
+	.pill-chip > svg { transition: scale 300ms var(--ease-bloom); }
+	.pill-chip:active > svg { scale: .92; transition-duration: 80ms; }
+	.pill-chip:focus-visible { box-shadow: inset 0 0 0 2px var(--ring); }   /* J5: a full-strength 2px ring (>= 3:1 on the pill in every personality) */
+	.pill-label { display: none; }
+	.pill-label kbd { margin-inline-start: 4px; color: var(--fg-muted); }
+	.pill-chip[data-bloom] .pill-label { display: inline; opacity: 1; translate: 0 0; filter: none;
+		transition: opacity 220ms var(--rt-ease-arrive) 40ms, translate var(--dur-bloom) var(--ease-bloom), filter 220ms var(--rt-ease-arrive); }
+	@starting-style { .pill-chip[data-bloom] .pill-label { opacity: 0; translate: -6px 0; filter: blur(4px); } }
+	@media (prefers-reduced-motion: reduce) { @starting-style { .pill-chip[data-bloom] .pill-label { translate: none; filter: none; } } }
+	/* the mode lamp: a tinted dot with a soft ring, never a black bullet */
+	.pill-dot { inline-size: 7px; block-size: 7px; border-radius: 50%; background: color-mix(in oklab, var(--pill-ask) 62%, transparent); box-shadow: 0 0 0 2px color-mix(in oklab, var(--pill-ask) 16%, transparent); flex: none; }
+	.pill[data-mode="draft"] .pill-chip .pill-dot, .pill-dot[data-mode="draft"] { background: var(--pill-draft); box-shadow: 0 0 0 2px color-mix(in oklab, var(--pill-draft) 20%, transparent); }
+	.pill[data-mode="explain"] .pill-chip .pill-dot, .pill-dot[data-mode="explain"] { background: var(--pill-explain); box-shadow: 0 0 0 2px color-mix(in oklab, var(--pill-explain) 20%, transparent); }
+	.pill-dot[data-mode="ask"] { background: color-mix(in oklab, var(--pill-ask) 62%, transparent); }
+	.pill-avatar { display: grid; place-items: center; inline-size: 20px; block-size: 20px; border-radius: 50%; background: var(--pill-wash); color: var(--fg-muted); box-shadow: inset 0 0 0 1px var(--pill-edge); font: 700 10px/1 var(--font-ui); font-style: normal; text-transform: uppercase; }
+
+	/* the prompt field */
+	.pill-field { position: relative; display: flex; align-items: center; flex: none; inline-size: var(--pill-field-w); block-size: 32px; }
+	/* the prompt is a textarea: at one line it is the old input to the pixel
+	   (32px, one 20px line, centred); it wraps (the bar is nowrap) and never
+	   shows a scrollbar until the multiline cap */
+	.pill-field :is(textarea, input) { display: block; box-sizing: border-box; inline-size: 100%; block-size: 32px; padding: 6px 10px; border: 0; background: none; color: var(--pill-ink); font: 400 15px/20px var(--font-ui); white-space: pre-wrap; overflow-wrap: anywhere; overflow: hidden; resize: none; field-sizing: fixed; outline: none; caret-color: var(--primary); scrollbar-width: thin; }
+	.pill-field :is(textarea, input)::placeholder { color: var(--fg-muted); opacity: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.pill-wave { position: absolute; inset-inline-end: 8px; display: none; align-items: center; gap: 3px; block-size: 18px; }
+	.pill-wave i { inline-size: 3px; block-size: 18px; border-radius: 2px; background: var(--primary); scale: 1 .25; animation: pill-wave 900ms ease-in-out infinite alternate; }
+	.pill-wave i:nth-child(2) { animation-delay: -200ms; } .pill-wave i:nth-child(3) { animation-delay: -450ms; } .pill-wave i:nth-child(4) { animation-delay: -120ms; } .pill-wave i:nth-child(5) { animation-delay: -650ms; }
+	.pill[data-voice] .pill-wave { display: flex; }
+	.pill-att { display: inline-flex; gap: 4px; flex: none; }
+	.pill-att[hidden] { display: none; }
+	.pill-tag { display: inline-flex; align-items: center; gap: 4px; block-size: 26px; padding: 0 4px 0 10px; border-radius: 999px; background: var(--primary-wash); color: var(--primary-text); font: 500 12px/1 var(--font-ui); white-space: nowrap; }
+	.pill-tag button { display: grid; place-items: center; inline-size: 20px; block-size: 20px; padding: 0; border: 0; border-radius: 50%; background: none; color: inherit; cursor: pointer; }
+	.pill-tag button:hover { background: var(--pill-wash); }
+	.pill-tag svg { inline-size: 12px; block-size: 12px; }
+	.pill-send { display: grid; place-items: center; flex: none; inline-size: 32px; block-size: 32px; margin-inline-start: 2px; padding: 0; border: 0; border-radius: 50%; background: var(--primary); color: var(--primary-fg); cursor: pointer; outline: none; transition: scale var(--rt-dur-press) var(--rt-ease-tint); }
+	.pill-send[hidden] { display: none; }
+	.pill-send:active { scale: .9; }
+	.pill-send:focus-visible { box-shadow: 0 0 0 2px var(--pill-ground), 0 0 0 4px var(--ring); }
+	[data-narrow-only] { display: none; }
+
+	/* level 2: the panel of one tool, blooming out of its chip */
+	.pill-panel { position: absolute; inset-block-end: calc(100% + 2px + var(--pill-hh) - var(--pill-h)); inset-inline-start: calc(50% - var(--pill-panel-w) / 2); inline-size: var(--pill-panel-w); max-block-size: min(62dvh, 460px); overflow-y: auto; overscroll-behavior: contain; padding: 6px; border-radius: 20px; background: var(--pill-ground); color: var(--fg); box-shadow: 0 0 0 1px var(--pill-edge), var(--pill-shadow); pointer-events: auto; transform-origin: 50% 100%; visibility: hidden; opacity: 0; }
+	.pill-panel[data-open] { visibility: visible; }
+	.pill-panel[data-pane="command"] .pill-panel-title { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); }
+	.pill-panel-title { margin: 0; padding: 8px 10px 4px; color: var(--fg-muted); font: 600 11px/1.2 var(--font-ui); letter-spacing: 0.6px; text-transform: uppercase; }
+	.pill-pane { display: none; gap: 2px; }
+	.pill-panel[data-pane="attach"] [data-pane="attach"], .pill-panel[data-pane="mode"] [data-pane="mode"], .pill-panel[data-pane="pages"] [data-pane="pages"],
+	.pill-panel[data-pane="theme"] [data-pane="theme"], .pill-panel[data-pane="command"] [data-pane="command"] { display: grid;
+		transition: opacity 200ms var(--rt-ease-arrive), translate 360ms var(--ease-bloom); }
+	/* the first grown frame already carries the rows (from 0.6, never an empty pane) */
+	@starting-style { .pill-panel .pill-pane { opacity: 0.6; translate: 0 4px; } }
+	.pill-pane ul { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+	.pill-opt { display: flex; align-items: center; gap: 10px; inline-size: 100%; padding: 8px 10px; border: 0; border-radius: 13px; background: none; color: var(--fg); font: inherit; text-align: start; text-decoration: none; cursor: pointer; outline: none; transition: background-color var(--rt-dur-tint) var(--rt-ease-tint), scale var(--rt-dur-press) var(--rt-ease-tint); }
+	.pill-opt:hover, .pill-opt:focus-visible { background: var(--pill-wash); }
+	.pill-opt:focus-visible { box-shadow: inset 0 0 0 2px var(--ring); }
+	.pill-opt:focus-visible:not(:hover) { background: color-mix(in oklab, var(--fg) 10%, transparent); }
+	.pill-opt:active { scale: .98; }
+	.pill-opt > span { display: grid; gap: 1px; min-inline-size: 0; }
+	.pill-opt b { font: 500 13.5px/1.3 var(--font-ui); }
+	.pill-opt small { color: var(--fg-muted); font-size: 12px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.pill-opt svg { color: var(--fg-muted); }
+	.pill-opt[aria-checked="true"]::after, .pill-opt:is([aria-current="page"], [aria-current="true"])::after { content: ""; margin-inline-start: auto; inline-size: 14px; block-size: 14px; flex: none; background: var(--fg-muted); -webkit-mask: var(--pill-check) center / contain no-repeat; mask: var(--pill-check) center / contain no-repeat; }
+	.pill-opt[data-variant="destructive"] b { color: var(--destructive-text, var(--fg)); }
+	/* the palette pane: wider, the prompt is its filter */
+	/* the palette pane: the pill's own upper half. Same width as the pill in
+	   palette mode (one formula), its bottom on the pill's top edge, square
+	   where they meet; the pill's top ring is the divider between list and
+	   field. The pane's own ring is clipped at the seam (pill.js animates the
+	   same clip from the seam upward to grow it) */
+	.pill-panel[data-pane="command"] { --pill-panel-w: min(var(--pill-cmd-w), 100% - 48px); inset-block-end: calc(50% + var(--pill-h) / 2 + 1px); max-block-size: none; overflow: visible; padding: 6px 6px 4px; border-radius: 20px 20px 0 0; transform-origin: 50% 100%; clip-path: inset(-48px var(--cmd-x) 0 var(--cmd-x) round 20px 20px 0 0); box-shadow: 0 0 0 1px var(--pill-edge), var(--pill-lift); }
+	.pill.is-cmd .pill-half { border-radius: 0 0 calc(var(--pill-h) / 2) calc(var(--pill-h) / 2); }
+	.pill.is-cmd .pill-row { box-sizing: border-box; inline-size: min(var(--pill-cmd-w), 100% - 48px); padding-inline: 14px 10px; gap: 8px; }
+	.pill.is-cmd .pill-field { flex: 1 1 auto; inline-size: auto; min-inline-size: 0; }
+	.pill.is-cmd .pill-field :is(textarea, input) { padding-inline: 2px; }
+	.pill.is-cmd :is(.pill-chip, .pill-att, .pill-send) { display: none; }
+	.pill-cmd-icon, .pill-esc { display: none; }
+	.pill.is-cmd .pill-cmd-icon { display: block; color: var(--fg-muted); }
+	.pill.is-cmd .pill-esc { display: inline-grid; place-items: center; flex: none; block-size: 22px; padding: 0 7px; border-radius: 6px; background: var(--pill-wash); color: var(--fg-muted); font: 500 11px/1 var(--font-mono); }
+	.pill.is-cmd .pill-half, .pill.is-cmd:has(#pill-input:focus) .pill-half { box-shadow: 0 0 0 1px var(--pill-edge), var(--pill-lift); }
+	#pill-cmd-list { display: grid; gap: 1px; max-block-size: min(52dvh, 400px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+	/* while rows remain past an edge, that edge fades over 24px so a cut row
+	   reads as "more", never as a clipped heading; at either end (or with
+	   nothing to scroll) its fade is 0 and the row there is whole (polish 4 craft) */
+	@supports (animation-timeline: scroll()) {
+		#pill-cmd-list { -webkit-mask: linear-gradient(transparent, #000 var(--cmd-fade-top) calc(100% - var(--cmd-fade)), transparent); mask: linear-gradient(transparent, #000 var(--cmd-fade-top) calc(100% - var(--cmd-fade)), transparent); animation: pill-cmd-fade linear both; animation-timeline: scroll(self); }
+	}
+	/* a personality swatch takes an icon's 16px, so every row's label starts on one line */
+	#pill-cmd-list .pill-swatch { inline-size: 16px; block-size: 16px; }
+	#pill-cmd-list [role="group"] { display: grid; gap: 1px; }
+	#pill-cmd-list .pill-opt { min-block-size: 36px; padding-block: 6px; }
+	#pill-cmd-list .pill-opt:is(:hover, :focus-visible) { background: none; }
+	#pill-cmd-list .pill-opt[aria-selected="true"] { background: color-mix(in oklab, var(--fg) 9%, transparent); }
+	#pill-cmd-list .pill-opt > span { display: flex; flex: 1 1 auto; align-items: baseline; gap: 8px; }
+	#pill-cmd-list .pill-opt kbd, #pill-cmd-list .pill-opt .pill-slug { margin-inline-start: auto; color: var(--fg-muted); font: 500 11.5px/1 var(--font-mono); }
+	/* a page's path only on the row you are on: the list stays as quiet as the tree */
+	#pill-cmd-list .pill-opt small.pill-slug { opacity: 0; transition: opacity 120ms linear; }
+	#pill-cmd-list .pill-opt[aria-selected="true"] small.pill-slug { opacity: 1; }
+	#pill-cmd-list .pill-opt[data-ask] b { color: var(--fg); }
+	#pill-cmd-list .pill-opt[data-ask] svg { color: var(--primary-text); }
+	#pill-cmd-list .pill-empty { padding: 14px 10px; color: var(--fg-muted); font-size: 13px; }
+	.pill-cmd-keys { display: flex; gap: 14px; justify-content: flex-end; padding: 8px 10px 4px; border-block-start: 1px solid var(--pill-edge); margin-block-start: 4px; color: var(--fg-muted); font-size: 11.5px; }
+	.pill-cmd-keys kbd { display: inline-grid; place-items: center; min-inline-size: 18px; block-size: 18px; margin-inline-end: 3px; padding: 0 4px; border-radius: 5px; background: var(--pill-wash); font: 500 11px/1 var(--font-mono); }
+	.pill.is-cmd .pill-field :is(textarea, input)::placeholder { color: var(--fg-muted); }
+	.pill-group { padding: 10px 10px 2px; color: var(--fg-muted); font: 600 11px/1.2 var(--font-ui); letter-spacing: 0.6px; text-transform: uppercase; }
+	.pill-sub { display: grid; gap: 2px; margin-block-start: 6px; padding-block-start: 6px; border-block-start: 1px solid var(--pill-edge); }
+	.pill-seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; margin: 4px; padding: 3px; border-radius: 14px; background: var(--pill-wash); }
+	.pill-seg button { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border: 0; border-radius: 11px; background: none; color: var(--fg-muted); font: 500 12px/1 var(--font-ui); cursor: pointer; outline: none; transition: background-color var(--rt-dur-tint) var(--rt-ease-tint), color var(--rt-dur-tint) var(--rt-ease-tint); }
+	.pill-seg button[aria-checked="true"] { background: var(--pill-ground); color: var(--fg); box-shadow: 0 1px 3px color-mix(in srgb, var(--elevation-color) 14%, transparent); }
+	.pill-seg button:focus-visible { box-shadow: inset 0 0 0 2px var(--ring); }
+	.pill-swatch { inline-size: 18px; block-size: 18px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 1px var(--pill-edge); }
+	/* the palette each swatch previews: pages/_shell.css, "PERSONALITY PREVIEWS" */
+	.pill-who { display: flex; align-items: center; gap: 10px; padding: 8px 10px 10px; }
+	.pill-who > span:last-child { display: grid; gap: 2px; min-inline-size: 0; }
+	.pill-who b { font: 600 13.5px/1.3 var(--font-ui); overflow: hidden; text-overflow: ellipsis; }
+	.pill-who small { color: var(--fg-muted); font-size: 12px; }
+
+	/* the demo reply bubble (in #layer) */
+	#layer > .pill-bubble { padding: 12px 14px 14px; }
+	.pill-bubble > header { display: flex; align-items: center; gap: 8px; margin-block-end: 6px; color: var(--fg-muted); font: 600 11px/1.2 var(--font-ui); letter-spacing: 0.6px; text-transform: uppercase; }
+	.pill-bubble > header .pv-x { inline-size: 26px; block-size: 26px; margin-inline-end: -6px; }
+	.pill-bubble > header .pv-x.pill-pin { margin-inline-end: 0; }
+	.pill-bubble > header .pv-x.pill-pin + .pv-x { margin-inline-start: 0; }
+	/* a pinned answer in flight: a fixed clone of the bubble (pill.js) */
+	.pin-flyer { position: fixed; z-index: var(--rt-z-toast); box-sizing: border-box; margin: 0; padding: 12px 14px 14px; overflow: hidden; contain: layout paint; border-radius: 18px; background: var(--pill-ground); color: var(--fg); box-shadow: 0 0 0 1px var(--pill-edge), var(--pill-float); font-size: 14px; line-height: 1.5; pointer-events: none; transform-origin: 0 0; will-change: translate; }
+	.pin-flyer-words { flex: none; }
+	/* the card's words in flight: the pin card's own type (pages/_shell.css, #aside) */
+	.pin-flyer-card { position: absolute; inset-block-start: 0; inset-inline-start: 0; box-sizing: border-box; padding: 10px 36px 11px 16px; color: var(--rt-foreground); font-size: var(--rt-text-sm); line-height: 1.5; pointer-events: none; }
+	.pin-flyer-card > b { display: flex; align-items: center; gap: 6px; margin: 0 0 2px; overflow: hidden; color: var(--ink); font-size: var(--rt-text-xs); font-weight: var(--rt-weight-semibold); text-overflow: ellipsis; white-space: nowrap; }
+	.pin-flyer-card > b::before { content: ""; flex: none; inline-size: 12px; block-size: 12px; background: var(--rt-signal); -webkit-mask: var(--pin-icon) center / contain no-repeat; mask: var(--pin-icon) center / contain no-repeat; }
+	.pin-flyer-card > p { display: -webkit-box; margin: 0; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 4; }
+	.pin-flyer .pill-w { animation: none; }
+	.pin-flyer .pill-dot { display: inline-block; }
+	.pill-bubble p { margin: 0; }
+	.pill-bubble a { color: var(--primary-text); }
+	.pill-bubble .pill-q { margin-block-end: 6px; color: var(--fg-muted); font-size: 13px; }
+	.pill-w { display: inline; animation: pill-word 420ms var(--rt-ease-arrive) both; animation-delay: calc(var(--i) * 24ms); }
+	.pill-think { display: inline-flex; gap: 4px; padding-block: 6px; }
+	.pill-think i { inline-size: 6px; block-size: 6px; border-radius: 50%; background: var(--fg-muted); animation: pill-think 900ms ease-in-out infinite; }
+	.pill-think i:nth-child(2) { animation-delay: 150ms; } .pill-think i:nth-child(3) { animation-delay: 300ms; }
+	#layer > * { animation: pill-rise 480ms var(--ease-bloom) both; }
+	#layer > [data-leaving] { animation: pill-sink 160ms var(--pill-ease-exit) both; }
+
+	/* ── a phone: the pill spans the width and keeps four parts; the rest of
+	   the tools live one tap away on a second face of the same pill ───── */
+	/* a narrow bar (pill.js watches the bar, not the viewport): the pill spans it
+	   and keeps four parts; the rest of the tools sit on its second face */
+	.pill[data-narrow] { --pill-panel-w: calc(100% - 24px); --pill-cmd-w: calc(100% - 24px); }
+	.pill[data-narrow] .pill-row { inline-size: calc(100% - 16px); padding-inline: 5px; }
+	.pill[data-narrow] .pill-field { flex: 1 1 auto; inline-size: auto; min-inline-size: 0; }
+	.pill[data-narrow] .pill-field :is(textarea, input) { font-size: 16px; }
+	.pill[data-narrow] [data-narrow-only] { display: inline-flex; }
+	.pill[data-narrow] .pill-chip[data-tool="tools"] { order: 5; }
+	.pill[data-narrow] .pill-send { order: 6; }
+	.pill[data-narrow][data-face="main"] .pill-chip:is([data-tool="attach"], [data-side="r"]) { display: none; }
+	.pill[data-narrow][data-face="tools"] :is(.pill-field, .pill-send, .pill-att) { display: none; }
+	.pill[data-narrow][data-face="tools"] .pill-row { justify-content: space-between; }
+	.pill[data-narrow] .pill-panel { inset-inline-start: 12px; }
+	@media (hover: none) { .pill-hint { display: none; } }
+	@media (prefers-reduced-motion: reduce) {
+		.pill-chip::before { scale: 1; transition: opacity 120ms linear; }
+		.pill-chip:active::before { scale: 1; }
+		.pill-chip > svg, .pill-chip:active > svg { scale: 1; transition: none; }
+		.pill-panel .pill-pane { translate: none !important; }
+	}
+}
+
+@keyframes pill-wave { from { scale: 1 .25; } to { scale: 1 1; } }
+@keyframes pill-think { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
+@keyframes pill-word { from { opacity: 0; filter: blur(4px); translate: 0 3px; } }
+@keyframes pill-rise { from { opacity: 0; translate: 0 14px; scale: .96; filter: blur(6px); } }
+@keyframes pill-sink { to { opacity: 0; translate: 0 8px; scale: .98; } }
+@media (prefers-reduced-motion: reduce) {
+	@keyframes pill-wave { from { opacity: .4; scale: 1 .6; } to { opacity: 1; scale: 1 .6; } }
+	@keyframes pill-word { from { opacity: 0; } }
+	@keyframes pill-rise { from { opacity: 0; } }
+	@keyframes pill-sink { to { opacity: 0; } }
+}
+
+@layer shell {
+	.pill-label-ghost { position: absolute; display: inline; white-space: nowrap; pointer-events: none; color: var(--pill-ink); }
+	.pill-label-ghost kbd { margin-inline-start: 4px; color: var(--fg-muted); }
+}
+
+@layer shell {
+	/* the library's default field look stops here: the pill is the field */
+	.pill .pill-field :is(textarea, input), .pill .pill-field :is(textarea, input):hover, .pill .pill-field :is(textarea, input):focus, .pill .pill-field :is(textarea, input):focus-visible {
+		min-block-size: 0; margin: 0; border: 0; border-radius: 0; background: none; box-shadow: none; outline: none; appearance: none; }
+	.pill:has(#pill-input:focus) .pill-half { box-shadow: 0 0 0 1px color-mix(in oklab, var(--ring) 28%, transparent), 0 0 0 4px color-mix(in oklab, var(--ring) 7%, transparent), var(--pill-shadow); }
+	/* J5: the field's keyboard focus is a full-strength 2px ring (>= 3:1 on the sheet in both modes);
+	   placed after the soft focus rule above, which otherwise wins at the same specificity */
+	.pill:not(.is-cmd):has(#pill-input:focus-visible) .pill-half { box-shadow: 0 0 0 2px var(--ring), var(--pill-shadow); }
+}
+
+@layer shell {
+	/* the library's default button padding outranks a single class */
+	 #layer .pv-x { padding: 0; min-inline-size: 0; }
+}
+@property --cmd-fade { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@property --cmd-fade-top { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@keyframes pill-cmd-fade { 0% { --cmd-fade-top: 0px; --cmd-fade: 24px; } 8%, 92% { --cmd-fade-top: 24px; --cmd-fade: 24px; } 100% { --cmd-fade-top: 24px; --cmd-fade: 0px; } }
+
+/* ── THE AGENT SLOT (#pill[data-agent]) ────────────────────────────────
+   The pill talks to a capability the Workspace names (the herdr console
+   Plugin, artyficial.herdr.console). Its mode dot gives way to a session
+   chip painted from the signal $pillAgent; the Plugin answers by Caller
+   patches into the personal Patch Region console (#pill-console, above the
+   pill), whose markup carries the .hc-* classes styled here. pill.js turns
+   [data-pill-call] and [data-pill-form] in that markup into capability
+   calls. Without data-agent nothing here applies and the demo is as it was.
+   The fixture mockups/console-fixture.html shows every state of the markup. */
+@layer shell {
+	body {
+		--hc-w: 760px;                                  /* the console and the thread */
+		--hc-picker-w: 420px;
+		--hc-idle: var(--success-text);                 /* herdr's status colours */
+		--hc-work: var(--warning-text);
+		--hc-block: var(--danger-text);
+		--hc-done: var(--info-text);
+		--hc-unknown: var(--fg-muted);
+		--hc-claude: #d97757;                           /* each agent's mark, one colour */
+		--hc-codex: var(--fg);
+		--hc-pi: #5f4fd9;
+		--hc-gen: var(--fg-muted);
+		--hc-ok-bg: var(--success-bg);
+		--hc-ok-ink: var(--success-text);
+		--hc-err-bg: var(--danger-bg);
+		--hc-err-ink: var(--danger-text);
+		--hc-err-ring: var(--danger-border);
+		--hc-danger: var(--danger);
+		--hc-danger-fg: var(--danger-fg);
+	}
+	body.theme-dark { --hc-pi: #a597ff; --hc-claude: #e58b6b; }
+	@media (prefers-color-scheme: dark) { body:not(.theme-light) { --hc-pi: #a597ff; --hc-claude: #e58b6b; } }
+
+	/* the session chip: the agent's mark, its name and a live status dot */
+	.pill-agent[hidden] { display: none; }
+	.pill[data-agent] .pill-chip[data-tool="mode"] { display: none; }
+	.pill-agent { gap: 6px; padding-inline: 6px 9px; color: var(--pill-ink); }
+	.pill-agent::before { opacity: 1; scale: 1; }                  /* a resting wash: it is a chip, not a dot */
+	.pill-agent-ico { display: inline-grid; place-items: center; inline-size: 18px; block-size: 18px; flex: none; }
+	.pill-agent-ico svg, .hc-ico svg { inline-size: 16px; block-size: 16px; }
+	/* AT REST the chip is the mark and the status dot; the name (a .pill-label)
+	   blooms in on hover or focus like the Voice and Theme chips' labels */
+	.pill-agent-name { max-inline-size: 132px; overflow: hidden; text-overflow: ellipsis; font: 500 13px/1 var(--font-ui); }
+	.pill-agent[data-has][data-bloom] .pill-agent-name { display: inline-block; }
+	.pill-agent:not([data-has]) :is(.pill-agent-name, .pill-agent-dot) { display: none; }
+	.pill-agent[data-has] .pill-agent-hint { display: none !important; }
+	/* a crew session wears a small "crew" tag after its dot */
+	.pill-agent[data-crew][data-bloom]::after { content: "crew"; position: relative; padding: 1px 4px; border-radius: 5px; box-shadow: inset 0 0 0 1px var(--pill-edge); color: var(--fg-muted); font: 600 9px/1.3 var(--font-ui); letter-spacing: .05em; text-transform: uppercase; }
+	.pill[data-narrow] .pill-agent-name { max-inline-size: 84px; }
+
+	/* the marks: currentColor in the kind's colour, readable on both grounds */
+	:is(.hc-ico, .pill-agent-ico, .ha-ico) { color: var(--hc-gen); }
+	:is(.hc-ico, .pill-agent-ico, .ha-ico)[data-kind="claude"] { color: var(--hc-claude); }
+	:is(.hc-ico, .pill-agent-ico, .ha-ico)[data-kind="codex"] { color: var(--hc-codex); }
+	:is(.hc-ico, .pill-agent-ico, .ha-ico)[data-kind="pi"] { color: var(--hc-pi); }
+	:is(.hc-ico, .pill-agent-ico, .ha-ico) svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+	/* the status dot, in herdr's colours; "working" breathes (not under reduced motion) */
+	:is(.hc-dot, .ha-dot) { display: inline-block; flex: none; inline-size: 7px; block-size: 7px; border-radius: 50%; background: var(--hc-unknown); }
+	:is(.hc-dot, .ha-dot)[data-status="idle"] { background: var(--hc-idle); }
+	:is(.hc-dot, .ha-dot)[data-status="working"] { background: var(--hc-work); box-shadow: 0 0 0 3px color-mix(in oklab, var(--hc-work) 24%, transparent); animation: hc-breathe 1.6s ease-in-out infinite; }
+	:is(.hc-dot, .ha-dot)[data-status="blocked"] { background: var(--hc-block); box-shadow: 0 0 0 3px color-mix(in oklab, var(--hc-block) 20%, transparent); }
+	:is(.hc-dot, .ha-dot)[data-status="done"] { background: var(--hc-done); }
+	@media (prefers-reduced-motion: reduce) { :is(.hc-dot, .ha-dot)[data-status="working"] { animation: none; } }
+
+	/* while the console is open the pill takes the console's width */
+	.pill.is-agent-wide:not(.is-cmd):not([data-narrow]) .pill-row { box-sizing: border-box; inline-size: min(var(--hc-w), 100% - 24px); }
+	.pill.is-agent-wide:not(.is-cmd) .pill-field { flex: 1 1 auto; inline-size: auto; min-inline-size: 0; }
+
+	/* ── #pill-console: the personal Patch Region above the pill ── */
+	#pill-console {
+			position: absolute; z-index: 7; inset-block-end: calc(var(--bar-h) + 6px + var(--pill-grow, 0px)); inset-inline-start: 50%;
+		display: flex; flex-direction: column; align-items: center; gap: 8px;
+		box-sizing: border-box; inline-size: min(var(--hc-w), calc(100% - 24px)); max-block-size: calc(100% - var(--top-h, 52px) - var(--bar-h) - 20px);
+		translate: -50% 0; pointer-events: none; color: var(--fg); font: 400 14px/1.5 var(--font-ui);
+	}
+	#pill-console:empty, #pill-console[data-collapsed] { display: none; }
+	#pill-console > * { pointer-events: auto; box-sizing: border-box; max-inline-size: 100%; animation: pill-rise 420ms var(--ease-bloom) both; }
+	body:not(.live) #pill-console > * { animation: none; }
+	/* the layer's notices step up over an open console (pill.js writes --hc-console-h) */
+	body.hc-console-open #layer { inset-block-end: calc(var(--bar-h) + 14px + var(--hc-console-h, 0px) + var(--pill-grow, 0px)); }
+	/* the controls inside: the library's default looks stop at the console */
+	#pill-console :is(button, input, select, textarea) { box-sizing: border-box; margin: 0; font: inherit; color: inherit; letter-spacing: normal; text-transform: none; }
+	#pill-console button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-block-size: 32px; min-inline-size: 0; padding: 0 12px; border: 0; border-radius: 999px; background: none; box-shadow: inset 0 0 0 1px var(--pill-edge); font-weight: 500; font-size: 13px; cursor: pointer; transition: background-color var(--rt-dur-tint) var(--rt-ease-tint), scale var(--rt-dur-press) var(--rt-ease-tint); }
+	#pill-console button:hover { background: var(--pill-wash); }
+	#pill-console button:active { scale: .97; }
+	#pill-console :is(button, input, select, textarea, a, [tabindex]):focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+	#pill-console button[disabled] { opacity: .5; cursor: default; }
+	#pill-console :is(input:not([type="radio"], [type="checkbox"]), select, textarea) { inline-size: 100%; min-block-size: 36px; padding: 0 10px; border: 0; border-radius: 10px; background: var(--pill-wash); box-shadow: none; font: 400 13px/1.3 var(--font-mono); outline: none; }
+	#pill-console :is(input, select, textarea)::placeholder { color: var(--fg-muted); opacity: 1; }
+	#pill-console code, #pill-console pre { font-family: var(--font-mono); font-size: 12.5px; }
+	#pill-console pre { margin: 6px 0 0; padding: 8px 10px; overflow: auto; border-radius: 10px; background: var(--pill-wash); white-space: pre-wrap; word-break: break-word; }
+	#pill-console summary { cursor: pointer; color: var(--fg-muted); font-size: 12px; }
+	/* a card in the console: the pill's ground, ring and float */
+	:is(.hc-picker, .hc-form, .hc-a, .hc-dialog, .hc-confirm) { background: var(--pill-ground); box-shadow: 0 0 0 1px var(--pill-edge), var(--pill-float); }
+
+	/* the Plugin's view root (#hc-view): one column, centred like the console */
+	#pill-console > #hc-view { display: flex; flex-direction: column; align-items: center; gap: 8px; inline-size: 100%; min-block-size: 0; max-block-size: 100%; }
+	#hc-view > * { max-inline-size: 100%; box-sizing: border-box; }
+	#pill-console .hc-error[hidden], #pill-console [hidden] { display: none !important; }
+
+	/* the session picker, a card the width of a pill panel: the search row on
+	   top, the grouped rows in a list that scrolls, "New session…" at its foot
+	   (outside the list, so it stays in view however long the list is) */
+	.hc-picker { display: flex; flex-direction: column; inline-size: min(var(--hc-picker-w), 100%); max-block-size: min(62dvh, 520px); padding: 6px; border-radius: 20px; }
+	.hc-search { display: flex; flex: none; align-items: center; gap: 8px; min-block-size: 36px; margin: 0 0 4px; padding: 0 10px; border-radius: 10px; background: var(--pill-wash); color: var(--fg-muted); cursor: text; }
+	.hc-search > span { flex: none; font-size: 15px; line-height: 1; }
+	#pill-console .hc-search > input { flex: 1; min-inline-size: 0; min-block-size: 34px; padding: 0; border-radius: 0; background: none; color: var(--fg); font: 400 14px/1.3 var(--font-ui); -webkit-appearance: none; appearance: none; }
+	#pill-console .hc-search > input:focus-visible { outline: none; }
+	.hc-search:has(input:focus-visible) { box-shadow: inset 0 0 0 2px var(--ring); }
+	.hc-search > input::-webkit-search-cancel-button { -webkit-appearance: none; }
+	.hc-list { display: grid; flex: 1 1 auto; align-content: start; grid-auto-rows: max-content; gap: 1px; min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+	.hc-group { padding: 10px 10px 4px; color: var(--fg-muted); font: 600 11px/1.2 var(--font-ui); letter-spacing: .6px; text-transform: uppercase; }
+	.hc-group:first-child { padding-block-start: 6px; }
+	.hc-group[hidden] { display: none; }
+	/* a row: mark · name (crew) / folder · status. The name, crew mark and
+	   folder may be direct children or wrapped in one span: both lay out */
+	#pill-console .hc-row { display: grid; grid-template-columns: 22px minmax(0, max-content) minmax(0, 1fr) auto; align-items: center; column-gap: 10px; row-gap: 1px; inline-size: 100%; min-block-size: 0; padding: 7px 10px; border-radius: 12px; box-shadow: none; background: none; color: var(--fg); font-weight: 400; text-align: start; text-decoration: none; }
+	#pill-console .hc-row:hover { background: var(--pill-wash); }
+	#pill-console .hc-row[aria-selected="true"] { background: color-mix(in oklab, var(--fg) 9%, transparent); }
+	#pill-console .hc-row:active { scale: .99; }
+	.hc-row[hidden] { display: none !important; }
+	/* the row "@name" + ↑ ↓ points at (pill.js), apart from the session in use (aria-selected) */
+	#pill-console .hc-row[data-hc-active] { box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--ring) 70%, transparent); }
+	/* a call in flight: the chip's dot breathes */
+	.pill-agent[data-busy] .pill-agent-dot, .pill-agent[data-busy]:not([data-has]) .pill-agent-ico { animation: pill-think 900ms ease-in-out infinite; }
+	.hc-row > .hc-ico { grid-column: 1; grid-row: 1 / span 2; }
+	.hc-row > .hc-name { grid-column: 2; grid-row: 1; }
+	.hc-row > .hc-crew { grid-column: 3; grid-row: 1; justify-self: start; }
+	.hc-row > .hc-folder { grid-column: 2 / span 2; grid-row: 2; }
+	.hc-row > .hc-status { grid-column: 4; grid-row: 1 / span 2; }
+	.hc-row > :not(.hc-ico, .hc-name, .hc-crew, .hc-folder, .hc-status) { grid-column: 2 / span 2; grid-row: 1 / span 2; min-inline-size: 0; }
+	.hc-ico { display: inline-grid; place-items: center; inline-size: 22px; block-size: 22px; flex: none; }
+	.hc-name { overflow: hidden; font: 600 13.5px/1.3 var(--font-ui); text-overflow: ellipsis; white-space: nowrap; }
+	.hc-folder { display: block; overflow: hidden; color: var(--fg-muted); font: 400 12px/1.3 var(--font-mono); text-overflow: ellipsis; white-space: nowrap; direction: ltr; }
+	.hc-crew { display: inline-block; margin-inline-start: 4px; padding: 1px 5px; border-radius: 6px; box-shadow: inset 0 0 0 1px var(--pill-edge); color: var(--fg-muted); font: 600 10px/1.3 var(--font-ui); letter-spacing: .05em; text-transform: uppercase; vertical-align: 1px; }
+	.hc-row > .hc-crew { margin-inline-start: 0; }
+	/* a session the console opened: its own actions (Teach, Close) in a fifth column */
+	#pill-console .hc-row:has(> .hc-tools) { grid-template-columns: 22px minmax(0, max-content) minmax(0, 1fr) auto auto; }
+	.hc-row > .hc-tools { grid-column: 5; grid-row: 1 / span 2; display: flex; gap: 6px; margin: 0; }
+	.hc-row > .hc-tools::before { content: none; }
+	#pill-console .hc-row > .hc-tools button { min-block-size: 26px; padding: 0 10px; font-size: 12px; }
+	#pill-console[data-narrow] .hc-row:has(> .hc-tools) { grid-template-columns: 22px minmax(0, max-content) minmax(0, 1fr) auto; }
+	#pill-console[data-narrow] .hc-row > .hc-tools { grid-column: 2 / -1; grid-row: 3; justify-self: start; margin-block-start: 6px; }
+	/* the agent list of "More" shows only while More is chosen */
+	.hc-seg:not(:has(input[value="more"]:checked)) > select { display: none; }
+	/* the head above the thread (outside .hc-thread): a row across the thread
+	   on the console's ground, so the page under it never shows through */
+	:not(.hc-thread) > .hc-head { box-sizing: border-box; inline-size: 100%; min-block-size: 36px; padding: 4px 6px 4px 10px; border-radius: 12px; background: var(--hc-ground); }
+	.hc-status { display: inline-flex; align-items: center; gap: 6px; color: var(--fg-muted); font-size: 12px; white-space: nowrap; }
+	/* "New session…" closes the list */
+	#pill-console .hc-new { flex: none; justify-content: flex-start; inline-size: 100%; min-block-size: 38px; margin-block-start: 4px; padding: 0 10px; border-radius: 12px; box-shadow: none; border-block-start: 1px solid var(--pill-edge); font-weight: 500; }
+	.hc-picker > .hc-new { border-start-start-radius: 0; border-start-end-radius: 0; }
+	.hc-empty { padding: 12px 10px; color: var(--fg-muted); font-size: 13px; }
+
+	/* the new-session form */
+	.hc-form { display: grid; gap: 12px; inline-size: min(var(--hc-picker-w), 100%); padding: 14px; border-radius: 20px; }
+	.hc-form label, .hc-form legend { display: block; margin: 0 0 4px; padding: 0; color: var(--fg-muted); font: 500 12px/1.3 var(--font-ui); }
+	.hc-form fieldset { min-inline-size: 0; margin: 0; padding: 0; border: 0; }
+	.hc-form > div:last-child, .hc-form footer { display: flex; justify-content: flex-end; gap: 8px; }
+	#pill-console .hc-form :is(button[type="submit"], button[data-primary]) { background: var(--pill-ink); color: var(--pill-ground); box-shadow: none; font-weight: 600; }
+	#pill-console .hc-form :is(button[type="submit"], button[data-primary]):hover { background: color-mix(in oklab, var(--pill-ink) 86%, var(--pill-ground)); }
+	/* the agent choice: a segmented row of radios (or pressed buttons) */
+	.hc-seg { display: flex; flex-wrap: wrap; gap: 6px; }
+	.hc-seg > :is(label, button) { position: relative; display: inline-flex; align-items: center; gap: 6px; min-block-size: 34px; margin: 0; padding: 0 12px 0 8px; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--pill-edge); color: var(--fg); font: 500 13px/1 var(--font-ui); cursor: pointer; }
+	#pill-console .hc-seg > button { border-radius: 10px; padding: 0 12px 0 8px; }
+	.hc-seg > :is(label:has(input:checked), [aria-checked="true"], [aria-pressed="true"]) { box-shadow: inset 0 0 0 2px var(--pill-ink); }
+	.hc-seg > label:has(input:focus-visible) { outline: 2px solid var(--ring); outline-offset: 1px; }
+	.hc-seg input[type="radio"] { position: absolute; inline-size: 1px; block-size: 1px; opacity: 0; pointer-events: none; }
+
+	/* the conversation: your words right, the agent's reply left, streaming */
+	/* The thread stands on a ground of the sheet's colour: a scrim behind the
+	   whole console that fades in above it and at its sides, so the page
+	   under it (a hero, a chart) never collides with the head or the bubbles.
+	   The bubbles are cards on it (the pill's ground), as in the design.
+	   While the console is open the page steps back (.main::before, 7% dark):
+	   the scrim takes that same tone, so its fade has no seam. */
+	#pill-console { --hc-ground: var(--sheet); }
+	body.hc-console-open #pill-console { --hc-ground: color-mix(in srgb, var(--sheet) 93%, #000); }
+	#pill-console:has(> #hc-view[data-view="thread"], > #hc-view[data-view="starting"], .hc-thread)::before {
+		content: ""; position: absolute; z-index: -1; inset: -56px -48px -6px; pointer-events: none;
+		background: linear-gradient(to bottom, transparent, var(--hc-ground) 56px);
+		-webkit-mask: linear-gradient(to right, transparent, #000 48px, #000 calc(100% - 48px), transparent);
+		mask: linear-gradient(to right, transparent, #000 48px, #000 calc(100% - 48px), transparent);
+	}
+	#pill-console[data-narrow]:has(> #hc-view[data-view="thread"], > #hc-view[data-view="starting"], .hc-thread)::before { inset-inline: -8px; -webkit-mask: none; mask: none; }
+	/* the thread keeps the last turns and scrolls; its top edge fades under the head */
+	.hc-thread { display: flex; flex-direction: column; gap: 10px; box-sizing: border-box; inline-size: 100%; min-block-size: 0; max-block-size: min(64dvh, 680px); overflow-y: auto; overscroll-behavior: contain; padding: 10px 2px 4px; background: none; scrollbar-width: thin; -webkit-mask: linear-gradient(to bottom, transparent, #000 10px); mask: linear-gradient(to bottom, transparent, #000 10px); }
+	/* the page steps back while the console is open, as it does for the palette */
+	body.hc-console-open .sheet > .main::before { opacity: 1; }
+	.hc-head { display: flex; align-items: center; gap: 8px; min-block-size: 28px; padding: 0 6px; color: var(--fg-muted); font-size: 12px; }
+	.hc-head .hc-name { color: var(--fg); font-size: 13px; }
+	.hc-head .hc-name { flex: none; max-inline-size: 40%; }
+	.hc-head .hc-folder { flex: 0 1 auto; min-inline-size: 0; }
+	.hc-head > * { flex-shrink: 0; }
+	.hc-head > .hc-folder { flex-shrink: 1; }
+	.hc-head > :last-child:is(button, a) { margin-inline-start: auto; }
+	#pill-console .hc-head button { min-block-size: 26px; padding: 0 10px; font-size: 12px; }
+	.hc-thread > .hc-head { position: sticky; inset-block-start: -10px; z-index: 1; min-block-size: 40px; margin-block: -10px 0; padding: 6px 6px 4px 10px; background: var(--hc-ground); }
+	.hc-q { align-self: flex-end; max-inline-size: min(80%, 560px); padding: 9px 13px; border-radius: 16px 16px 4px 16px; background: var(--pill-ink); color: var(--pill-ground); font-size: 14px; overflow-wrap: anywhere; white-space: pre-wrap; }
+	.hc-thread :is(.hc-a, .hc-dialog) { box-shadow: 0 0 0 1px var(--pill-edge), 0 1px 2px color-mix(in srgb, var(--rt-foreground) 6%, transparent), 0 6px 14px -10px color-mix(in srgb, var(--rt-foreground) 26%, transparent); }
+	.hc-thread .hc-dialog { box-shadow: 0 0 0 1px var(--hc-err-ring); }
+	.hc-a { align-self: stretch; padding: 12px 16px; border-radius: 18px; font-size: 14px; overflow-wrap: anywhere; }
+	.hc-a > :first-child { margin-block-start: 0; }
+	.hc-a > :last-child { margin-block-end: 0; }
+	.hc-a :is(p, ul, ol) { margin: 0 0 8px; }
+	.hc-a :is(ul, ol) { padding-inline-start: 20px; }
+	.hc-a :not(pre) > code { padding: 1px 4px; border-radius: 5px; background: var(--pill-wash); }
+	.hc-a a { color: var(--primary-text); }
+	.hc-a[data-streaming] > :last-child::after, .hc-a[data-streaming]:empty::after, .hc-caret { content: ""; display: inline-block; inline-size: 7px; block-size: 15px; margin-inline-start: 2px; background: var(--fg); vertical-align: -2px; animation: hc-caret 1s steps(2) infinite; }
+	@media (prefers-reduced-motion: reduce) { .hc-a[data-streaming] > :last-child::after, .hc-a[data-streaming]:empty::after, .hc-caret { animation: none; opacity: .6; } }
+	/* tool calls fold into one quiet line; its one caret is drawn here */
+	.hc-tools { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; color: var(--fg-muted); font-size: 12px; }
+	.hc-a > .hc-tools::before { content: "▸"; font-size: 10px; }
+	.hc-wait { margin: 0; color: var(--fg-muted); font-size: 12px; letter-spacing: .1em; }
+	/* a patch block, applied (green) or refused (red, with the reason and the raw block) */
+	.hc-chip { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin: 8px 0; padding: 6px 10px; border-radius: 10px; background: var(--pill-wash); font: 400 12.5px/1.45 var(--font-mono); overflow-wrap: anywhere; }
+	.hc-chip[data-ok] { background: var(--hc-ok-bg); }
+	.hc-chip[data-err] { background: var(--hc-err-bg); box-shadow: inset 0 0 0 1px var(--hc-err-ring); }
+	.hc-chip > b, .hc-chip > strong { font: 600 12.5px/1.45 var(--font-ui); }
+	.hc-chip[data-ok] > :is(b, strong) { color: var(--hc-ok-ink); }
+	.hc-chip[data-err] > :is(b, strong) { color: var(--hc-err-ink); }
+	.hc-chip details { flex-basis: 100%; color: var(--fg-muted); font-size: 12px; }
+
+	/* blocked: the dialog's text and the keys it offers; you choose */
+	.hc-dialog { display: grid; gap: 8px; inline-size: 100%; padding: 12px 14px; border-radius: 16px; box-shadow: 0 0 0 1px var(--hc-err-ring), var(--pill-float); }
+	.hc-dialog > :is(p, pre) { margin: 0; }
+	.hc-dialog > div:last-child, .hc-dialog footer { display: flex; flex-wrap: wrap; gap: 6px; }
+	#pill-console .hc-dialog button { min-inline-size: 36px; padding: 0 10px; font: 500 12px/1 var(--font-mono); }
+
+	/* crew (or not opened here): a deliberate second step, in red */
+	.hc-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; inline-size: 100%; padding: 10px 12px; border-radius: 16px; box-shadow: 0 0 0 1.5px var(--hc-block), var(--pill-float); font-size: 14px; }
+	.hc-confirm > :is(p, span, div):not(.hc-ico) { flex: 1 1 220px; min-inline-size: 0; margin: 0; }
+	.hc-confirm q, .hc-confirm small { color: var(--fg-muted); }
+	#pill-console .hc-confirm button:last-of-type { background: var(--hc-danger); color: var(--hc-danger-fg); box-shadow: none; font-weight: 600; }
+	#pill-console .hc-confirm button:last-of-type:hover { background: color-mix(in oklab, var(--hc-danger) 88%, var(--fg)); }
+
+	/* a failed call or a refusal: never silent */
+	.hc-error { display: flex; align-items: center; gap: 10px; inline-size: 100%; padding: 8px 12px; border-radius: 12px; background: linear-gradient(var(--hc-err-bg), var(--hc-err-bg)), var(--pill-ground); box-shadow: inset 0 0 0 1px var(--hc-err-ring), var(--pill-float); color: var(--hc-err-ink); font-size: 13px; }
+	.hc-error::before { content: "!"; display: inline-grid; place-items: center; flex: none; inline-size: 18px; block-size: 18px; border-radius: 50%; background: var(--hc-block); color: var(--sheet); font: 700 11px/1 var(--font-ui); }
+	.hc-error > :is(p, span):first-of-type { flex: 1 1 auto; min-inline-size: 0; margin: 0; }
+	#pill-console .hc-error button { min-block-size: 24px; margin-inline-start: auto; padding: 0 8px; color: inherit; font-size: 12px; }
+	.hc-thread .hc-error { inline-size: auto; }
+
+	/* a narrow sheet (a phone): the console spans it; the picker is a bottom sheet */
+	#pill-console[data-narrow] { inline-size: calc(100% - 16px); inset-block-end: calc(var(--bar-h) + 2px + var(--pill-grow, 0px)); }
+	#pill-console[data-narrow] :is(.hc-picker, .hc-form) { inline-size: 100%; border-end-start-radius: 8px; border-end-end-radius: 8px; padding-block-start: 18px; }
+	#pill-console[data-narrow] :is(.hc-picker, .hc-form)::before { content: ""; position: absolute; inset-block-start: 6px; inset-inline-start: 50%; inline-size: 36px; block-size: 4px; border-radius: 2px; background: var(--fg-faint, var(--fg-muted)); translate: -50% 0; opacity: .6; }
+	#pill-console[data-narrow] :is(.hc-picker, .hc-form) { position: relative; }
+	#pill-console[data-narrow] .hc-picker { max-block-size: min(70dvh, 560px); }
+	#pill-console[data-narrow] .hc-row { padding-block: 9px; }
+	#pill-console[data-narrow] .hc-q { max-inline-size: 88%; }
+	#pill-console[data-narrow] .hc-thread { max-block-size: min(66dvh, 560px); }
+	#pill-console[data-narrow] .hc-head > .hc-folder { display: none; }
+}
+@keyframes hc-breathe { 50% { box-shadow: 0 0 0 4px color-mix(in oklab, var(--hc-work) 10%, transparent); } }
+@keyframes hc-caret { 50% { opacity: 0; } }
+
+/* ── THE MULTILINE PILL (.is-multi, pill.js) ─────────────────────────────
+   The text needs a second line: the text takes the pill's whole width on
+   top, the tools sit in a bar under it (the status bar's arrangement:
+   attach and the session chip at the left, voice · theme · search · send
+   at the right), and the pill grows upward from its bottom edge, one 20px
+   line at a time, to min(240px, 40vh); then the text scrolls inside. The
+   corners are the capsule's 20px. The width is the palette's (the console's
+   while the console is open; the bar's on a phone). */
+@layer shell {
+	.pill.is-multi .pill-row { box-sizing: border-box; block-size: auto; min-block-size: var(--pill-h); margin-block-start: calc(var(--pill-h) - var(--pill-hh)); flex-wrap: wrap; align-content: flex-end; row-gap: 0; padding: 6px 6px 4px; }
+	.pill.is-multi:not(.is-cmd):not(.is-agent-wide):not([data-narrow]) .pill-row { inline-size: min(var(--pill-cmd-w), 100% - 48px); }
+	.pill.is-multi .pill-row > .pill-field { order: -1; flex: 1 0 100%; inline-size: auto; min-inline-size: 0; block-size: auto; align-items: stretch; margin-block-end: 2px; }
+	.pill.is-multi .pill-row > .pill-field > textarea { block-size: auto; min-block-size: 32px; padding-block: 4px; }
+	.pill.is-multi .pill-row > .pill-field > .pill-wave { inset-block-start: 6px; }
+	/* the bar: the first right-hand tool takes the free space */
+	.pill.is-multi:not([data-narrow]) .pill-row > [data-tool="voice"] { margin-inline-start: auto; }
+	.pill.is-multi[data-narrow] .pill-row > [data-tool="tools"] { margin-inline-start: auto; }
+	.pill.is-multi .pill-row > .pill-send { margin-inline-start: 2px; }
+	.pill.is-multi .pill-row > .pill-att { flex-wrap: wrap; }
+}

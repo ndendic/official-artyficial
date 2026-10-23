@@ -1,0 +1,30 @@
+{
+  "name": "ribbon-deck",
+  "displayName": "Ribbon & Sheet Showcase",
+  "kind": "shell",
+  "version": "0.3.5",
+  "description": "Ribbon & Sheet with everything in it: the AI pill with its palette, pins that fly into a fused inspector, demo Inbox and Data panels, and the Agents sidebar. All 9 Patch Regions live. The blank version for a new Workspace is ribbon-sheet.",
+  "publisher": {
+    "name": "Artyficial",
+    "url": "https://github.com/ndendic/official-artyficial"
+  },
+  "repository": "https://github.com/ndendic/official-artyficial",
+  "license": "MIT",
+  "tags": [
+    "shell",
+    "ribbon",
+    "sheet",
+    "showcase",
+    "ai-pill"
+  ],
+  "screenshots": [
+    ".artyficial/screenshot-day.webp",
+    ".artyficial/screenshot-night.webp"
+  ],
+  "readme": "README.md",
+  "platform": {
+    "min": "0.20.1",
+    "max_exclusive": null
+  },
+  "manifest": "manifest.json"
+}

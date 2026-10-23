@@ -1,0 +1,29 @@
+{
+  "name": "bento",
+  "displayName": "Bento",
+  "kind": "theme",
+  "version": "1.0.4",
+  "description": "The default, neutral personality: cool fog grounds, Paper White cards, Console Black as the inverse surface and Signal Coral, with white ink on the signal fill.",
+  "publisher": {
+    "name": "Artyficial",
+    "url": "https://github.com/ndendic/official-artyficial"
+  },
+  "repository": "https://github.com/ndendic/official-artyficial",
+  "license": "MIT",
+  "tags": [
+    "theme",
+    "neutral",
+    "coral",
+    "default"
+  ],
+  "screenshots": [
+    ".artyficial/screenshot-day.webp",
+    ".artyficial/screenshot-night.webp"
+  ],
+  "readme": "README.md",
+  "platform": {
+    "min": "0.20.1",
+    "max_exclusive": null
+  },
+  "manifest": "manifest.json"
+}

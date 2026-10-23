@@ -1,0 +1,379 @@
+/* bento: the default, neutral personality. A cool fog daylight, Paper White cards, Console
+   Black as the inverse surface, and Signal Coral doing double duty as both `primary` and
+   `danger`. Every declaration is a colour ROLE pointed at a PRIMITIVE: a personality never
+   names a component.
+   The one source of Bento: the library's design/themes/bento.css (the day block) and
+   design/themes/dark.css (the night block) are generated from this file by the theme
+   library build, and every theme check measures against them (the floor).
+   Since the theme packages (2026-10-10) they carry the ribbon-deck shell's changes:
+   - three day inks step down one notch so every pair stays at or above 4.5:1 (--fg-faint,
+     --primary-text, --danger-text);
+   - the signal fill (Export, every primary button) carries WHITE ink in every mode (J5):
+     coral-11 with white (5.2:1), hover and press darker still;
+   - --ribbon-floor, the shell's dark ribbon floor: neutral black here.
+   Why `body` and not `:root`: base/tokens.css declares on `body`, so a personality has to
+   reach `body` too or the base would win the inherited value. The two axes never collide:
+     personality  `data-theme="<name>"` on <html>
+     mode         `body.theme-dark` / `.theme-light` + prefers-color-scheme */
+@layer themes {
+/*DAY*/ body {
+	/* ── surfaces ─────────────────────────────────────────────────────────
+	   bg          the app ground
+	   bg-elevated the card that floats on it (ours is LIGHTER than the ground)
+	   bg-inset    the well inside a card, and every quiet control
+	   bg-hover    the interactive state of both
+	   bg-emphasis the inverse surface — the black card, rail and top bar
+	   bg-overlay  the scrim behind a drawer                                 */
+	--bg: var(--fog-2);
+	--bg-elevated: var(--fog-0);
+	--bg-inset: var(--fog-1);
+	--bg-hover: var(--fog-3);
+	--bg-cell: var(--fog-0);
+	--bg-emphasis: var(--soot-12);
+	--bg-emphasis-inset: var(--soot-10);
+	--bg-emphasis-hover: var(--soot-9);
+	--bg-emphasis-inset-hover: var(--soot-8);   /* hover of a control that RESTS on bg-emphasis-inset */
+	--bg-on-emphasis-well: color-mix(in srgb, var(--pure-white) 8%, transparent);
+	--bg-overlay: color-mix(in srgb, var(--fog-12) 32%, transparent);
+
+	/* ── foregrounds ─────────────────────────────────────────────────────── */
+	--fg: var(--fog-12);
+	--fg-muted: var(--fog-7);          /* 7.5:1 on the card */
+	--fg-faint: #5e6263;               /* one notch under --fog-6, so every faint pair on the ribbon-deck ground clears 4.5:1 (polish 4) */
+	/* the ink of a control that CANNOT BE USED, and the reason it is its own
+	   role rather than --fg-faint. btn.css promises in its own comment that
+	   "disabled is the fog button, never opacity", and the point of not using
+	   opacity is LEGIBILITY. --fg-faint is tuned for the quiet TIER — a .help
+	   line, a .kv key, a row action that is revealed on hover — and a tier
+	   that is allowed to recede is not the same requirement as a control that
+	   must stay readable while switched off. Here the two coincide (4.5:1 on
+	   --tertiary, which is what both .btn:disabled and .input:disabled sit
+	   on), so this is an alias and Bento does not move by a pixel; harbor's
+	   faint tier is one step lighter and lands at 3.5:1, which is where the
+	   promise broke and why the role had to exist to fix it. */
+	--fg-disabled: var(--fg-faint);    /* 4.5:1 on --tertiary */
+	--fg-on-emphasis: var(--pure-white);
+	--fg-on-emphasis-muted: color-mix(in srgb, var(--pure-white) 62%, transparent);
+	--fg-on-emphasis-hover: var(--soot-1);     /* hover of a LIGHT control on the emphasis surface */
+
+	/* ── lines, focus, selection ─────────────────────────────────────────── */
+	--border: color-mix(in srgb, var(--fog-12) 8%, transparent);
+	--border-strong: color-mix(in srgb, var(--fog-12) 12%, transparent);
+	--border-on-emphasis: color-mix(in srgb, var(--pure-white) 14%, transparent);
+	--border-emphasis-edge: transparent;  /* a bone edge appears on the night ground */
+	--ring: var(--fg);
+	--selection: color-mix(in srgb, var(--coral-9) 25%, transparent);
+
+	/* ── brand ───────────────────────────────────────────────────────────────
+	   primary   the one loud colour: what the console asks you to press
+	   secondary the quiet emphasis: the inverse surface as a control
+	   tertiary  the quietest control: a well with a word in it
+	   accent    the marker that is neither state nor action (CLI, agent)
+	   -fg is what you write ON the solid; -text is the hue made readable on
+	   the page; -wash is the tint it leaves behind.                          */
+	/* the signal carries WHITE ink in every mode (ribbon-deck J5): coral-9 measures 3.09:1 under
+	   white, so the fill walks to coral-11 (5.2:1), and hover and press go darker still. The
+	   page ink steps one notch under coral-11 for the darker ground (polish 4). */
+	--primary: var(--coral-11);
+	--primary-fg: var(--fog-0);
+	--primary-hover: color-mix(in srgb, var(--coral-12) 22%, var(--coral-11));
+	--primary-active: color-mix(in srgb, var(--coral-12) 40%, var(--coral-11));
+	--primary-wash: color-mix(in srgb, var(--coral-11) 12%, transparent);
+	--primary-text: #b03117;
+
+	--secondary: var(--bg-emphasis);
+	--secondary-fg: var(--fg-on-emphasis);
+	--secondary-hover: var(--bg-emphasis-hover);
+	--secondary-active: var(--bg-emphasis-inset);
+	--secondary-wash: var(--bg-emphasis-inset);
+	--secondary-text: var(--fg);
+
+	--tertiary: var(--bg-inset);
+	--tertiary-fg: var(--fg);
+	--tertiary-hover: var(--bg-hover);
+	--tertiary-active: var(--bg-hover);
+	--tertiary-wash: var(--bg-inset);
+	--tertiary-text: var(--fg-muted);
+
+	--accent: var(--iris-9);
+	/* NOT --pure-white, and this is the same finding --info-fg records four
+	   roles below. White measures 3.54:1 on Signal Violet — under the 4.5:1
+	   any label on this fill needs, and every consumer of this role is a
+	   label: .badge.accent, .badge.purple and the admin's .badge.src-cli are
+	   all 12px/600 text. The rule is dark ink on a saturated fill, not "the
+	   hue's darkest step" (--iris-12 is 4.32:1, also short), so this takes
+	   --fog-12 at 5.56:1 — the ink --primary-fg, --danger-fg and --info-fg
+	   already carry. Harbor had it right from the start (--stone-12 on
+	   --orange-5, 8.39:1); Bento was the outlier, which is the same shape of
+	   miss themes/dark.css records at --warning-text. */
+	--accent-fg: var(--fog-12);
+	--accent-hover: var(--iris-10);
+	--accent-active: var(--iris-11);
+	--accent-wash: color-mix(in srgb, var(--iris-9) 14%, transparent);
+	--accent-text: var(--iris-11);
+
+	/* ── the showcase accents ───────────────────────────────────────────────
+	   FIVE NUMBERED SLOTS, for a view whose job is to tell many small things
+	   APART: a component showcase, a legend, a grid of specimens, a bento of
+	   tiles that are each about a different thing. A showcase accent is not a
+	   status and not an action — it means "this one is a different one from
+	   the one next to it", which is the single thing none of the roles above
+	   can say, and the reason a page that needs five of them was reaching for
+	   --success to mean "the sizes tile".
+
+	   THE NAME IS THE SLOT. Not the hue: `--showcase-2` is mint under Bento
+	   and teal under Harbor, and a consumer that had asked for "mint" would
+	   have been wrong the first time a second personality existed — which is
+	   exactly what `.badge.coral` cost, one level up. Not the subject either:
+	   what tile 2 is ABOUT belongs to the page, and /components-buttons maps
+	   its five (role · size and layout · content · surface · state) in its own
+	   sheet. A theme may not know what a page is showing.
+
+	   THE ORDER IS --chart-*'s ORDER, so showcase N and series N are the same
+	   colour — a legend and a tile agree without anyone having arranged it.
+
+	   FOUR MEMBERS, because that is what a fill actually needs:
+	     --showcase-N        the solid
+	     --showcase-N-fg     the ink that is legible ON the solid. The Paired
+	                         Ink Rule is the whole of this line: every fill
+	                         ships with its ink, and a consumer reads the pair.
+	     --showcase-N-text   the hue made readable on the page
+	     --showcase-N-wash   the tint it leaves behind
+	   No -border: a wash IS the hairline at this scale.
+
+	   WHERE -text IS MEASURED, stated out loud because it is the thing that
+	   silently goes wrong. Every `-text` role in this system is tuned against
+	   --bg-elevated — the card — which is the surface a page reads on; these
+	   five clear 5.0:1 there in both modes, where --warning-text (4.51:1) and
+	   Coral Ink (4.60:1 by the design system's own note) sit on the line. On the bare
+	   GROUND, one step darker, --showcase-1-text falls to 4.47:1: a miss of
+	   three hundredths that no screenshot would ever show. A consumer that
+	   stands showcase text on the tray gives it a surface first. Every other
+	   slot, in both personalities, clears 4.5:1 on the ground too.
+
+	   THE STEPS ARE NOT ALWAYS THE FAMILY'S. --showcase-2-text is --mint-11
+	   here but --teal-10 under Harbor, and --showcase-3-text is --yellow-11
+	   there rather than the --yellow-10 --warning-text takes. These are new
+	   roles with no legacy consumers, so each one takes the step that clears
+	   the floor with room rather than the step its neighbour happened to
+	   inherit. Open Props' ramps are not aligned with each other and this is
+	   where that shows. */
+	--showcase-1: var(--coral-9);
+	--showcase-1-fg: var(--fog-12);                                            /* 6.38:1 */
+	--showcase-1-text: var(--coral-11);                                        /* 5.05:1 on the card */
+	--showcase-1-wash: color-mix(in srgb, var(--coral-9) 12%, transparent);
+
+	--showcase-2: var(--mint-9);
+	--showcase-2-fg: var(--mint-12);                                           /* 7.53:1 */
+	--showcase-2-text: var(--mint-11);                                         /* 5.19:1 on the card */
+	--showcase-2-wash: color-mix(in srgb, var(--mint-9) 14%, transparent);
+
+	--showcase-3: var(--butter-9);
+	--showcase-3-fg: var(--butter-12);                                         /* 8.99:1 */
+	--showcase-3-text: var(--butter-11);                                       /* 6.02:1 on the card */
+	--showcase-3-wash: color-mix(in srgb, var(--butter-9) 18%, transparent);
+
+	/* --fog-12 and not --pure-white (3.54:1) and not --iris-12 (4.32:1): the
+	   same finding, and the same answer, as --accent-fg four roles above. */
+	--showcase-4: var(--iris-9);
+	--showcase-4-fg: var(--fog-12);                                            /* 5.56:1 */
+	--showcase-4-text: var(--iris-11);                                         /* 9.44:1 on the card */
+	--showcase-4-wash: color-mix(in srgb, var(--iris-9) 14%, transparent);
+
+	--showcase-5: var(--blue-6);
+	--showcase-5-fg: var(--fog-12);                                            /* 5.53:1 */
+	--showcase-5-text: var(--blue-9);                                          /* 5.91:1 on the card */
+	--showcase-5-wash: color-mix(in srgb, var(--blue-6) 14%, transparent);
+
+	/* ── status ──────────────────────────────────────────────────────────── */
+	--success: var(--mint-9);
+	--success-fg: var(--mint-12);
+	--success-text: var(--mint-11);
+	--success-bg: color-mix(in srgb, var(--mint-9) 14%, transparent);
+	--success-border: color-mix(in srgb, var(--mint-9) 40%, transparent);
+	--success-halo: color-mix(in srgb, var(--mint-9) 25%, transparent);
+
+	--warning: var(--butter-9);
+	--warning-fg: var(--butter-12);
+	--warning-text: var(--butter-11);
+	--warning-bg: color-mix(in srgb, var(--butter-9) 18%, transparent);
+	--warning-border: color-mix(in srgb, var(--butter-9) 45%, transparent);
+	--warning-halo: color-mix(in srgb, var(--butter-9) 30%, transparent);
+
+	--danger: var(--coral-9);
+	--danger-fg: var(--fog-12);
+	--danger-text: #b03117;                 /* --primary-text's notch, for the same ground */
+	--danger-bg: color-mix(in srgb, var(--coral-9) 12%, transparent);
+	--danger-border: color-mix(in srgb, var(--coral-9) 40%, transparent);
+	--danger-halo: color-mix(in srgb, var(--coral-9) 25%, transparent);
+
+	--info: var(--blue-6);
+	/* fog-12 and not --pure-white (3.56:1 on blue-6, under the 4.5:1 any label
+	   on this fill would need) and not --blue-12 either: the hue-12 step works
+	   for --success-fg and --warning-fg because mint-9 and butter-9 are LIGHT
+	   fills, and blue-6 is dark enough that its own 12 is worse than white
+	   (3.42:1). fog-12 measures 5.53:1 and is the ink --primary-fg and
+	   --danger-fg already use — the rule is dark ink on a saturated fill, not
+	   "the hue's darkest step". No consumer paints --info today; this is the
+	   value being made right before one does, not a repaint. */
+	--info-fg: var(--fog-12);
+	--info-text: var(--blue-9);
+	--info-bg: color-mix(in srgb, var(--blue-6) 14%, transparent);
+	--info-border: color-mix(in srgb, var(--blue-6) 40%, transparent);
+	--info-halo: color-mix(in srgb, var(--blue-6) 25%, transparent);
+
+	/* ── the layer identity ──────────────────────────────────────────────────
+	   One hue per cascade layer, read by components/layer.css wherever a layer
+	   is named. Six roles, not six values in a page: the identity has to be the
+	   same in a table cell, a code block, a chip and a sentence, and harbor
+	   repoints all six from its own vocabulary.
+
+	   THE MAPPING IS THE CASCADE. Layer order is a ramp of increasing power to
+	   override, so the colour is a ramp of increasing loudness: neutral at the
+	   foundation, the console's own loud coral on the layer that gets the last
+	   word. Each hue also fits its layer on its own terms —
+
+	     base        the ground. The neutrals, the reset, the type roles; the
+	                 one layer with no voice of its own, so it keeps the slate
+	                 it is made of. (--chart-6 is a neutral for the same reason:
+	                 a categorical six may contain one.)
+	     themes      cool and factual — Bento's own `info` hue. A theme states
+	                 facts about roles: it changes appearance, never meaning.
+	     patterns    violet, "the marker that is neither state nor action" —
+	                 which is exactly what shared structure is, owned by nobody.
+	     components  the living vocabulary, the largest population of the tree.
+	     utilities   a utility beats a component by layer order alone: a caution
+	                 hue for the blunt instrument that always wins.
+	     pages       the last word, and the layer this documentation warns about
+	                 — an unfenced page rule silently redefines a component
+	                 everywhere. Coral is also `danger`; here the two agree.
+
+	   The six day steps are the six a Bento theme has ALREADY proven readable
+	   on the page — the same steps --accent-text, --info-text, --success-text,
+	   --warning-text and --danger-text take — so the identity costs no new
+	   colour decisions and dark.css flips it the way it flips those. */
+	--layer-base: var(--fog-7);
+	--layer-themes: var(--blue-9);
+	--layer-patterns: var(--iris-11);
+	--layer-components: var(--mint-11);
+	--layer-utilities: var(--butter-11);
+	--layer-pages: var(--coral-11);
+
+	/* the same six re-picked for the INVERSE surface, the case
+	   --danger-on-emphasis-text and --success-on-emphasis-text already make:
+	   Coral Ink is 4.6:1 on paper and about 2:1 on Console Black. They are the
+	   six steps the night mode takes, and they are declared once, outside the
+	   night block — a black card is black in both modes, so its inks do not
+	   flip when the lights go out. */
+	--layer-base-on-emphasis: var(--fog-4);
+	--layer-themes-on-emphasis: var(--blue-3);
+	--layer-patterns-on-emphasis: var(--iris-8);
+	--layer-components-on-emphasis: var(--mint-8);
+	--layer-utilities-on-emphasis: var(--butter-8);
+	--layer-pages-on-emphasis: var(--coral-8);
+
+	/* the neutral halo the idle lamp and the plain feed dot wear */
+	--neutral-halo: color-mix(in srgb, var(--fog-6) 20%, transparent);
+
+	/* ── what a role looks like ON the emphasis surface ──────────────────────
+	   The inverse surface cannot use --danger-text (4.6:1 on paper, unreadable
+	   on black); these are the two hues re-picked for it, and the surface
+	   context in patterns/surfaces.css points the roles at them. */
+	--danger-on-emphasis-text: var(--coral-8);
+	--success-on-emphasis-text: var(--mint-9);
+	/* the rest of the family. Four roles, one rule: the step the NIGHT mode
+	   already takes, because a black card is black in both modes and its inks
+	   must not flip when the lights go out. Measured on --bg-emphasis, bento
+	   day / night. --primary-on-emphasis-text and --danger-on-emphasis-text
+	   are the SAME value here because bento aliases --primary and --danger to
+	   coral by design; they are still two roles, and harbor splits them. */
+	--warning-on-emphasis-text: var(--butter-8);   /* 13.97 / 14.74 */
+	--info-on-emphasis-text: var(--blue-3);        /* 10.13 / 10.69 */
+	--primary-on-emphasis-text: var(--coral-8);    /*  7.77 /  8.19 */
+	--accent-on-emphasis-text: var(--iris-8);      /*  6.56 /  6.91 */
+
+	/* ── charts ─────────────────────────────────────────────────────────────
+	   Categorical, in the order a series takes them. Coral leads because the
+	   live series is always the loud one. */
+	--chart-1: var(--coral-9);
+	--chart-2: var(--mint-9);
+	--chart-3: var(--butter-9);
+	--chart-4: var(--iris-9);
+	--chart-5: var(--blue-6);
+	--chart-6: var(--fog-6);
+
+	/* the ribbon-deck shell's dark ribbon floor (pages/_shell.css): neutral black here, each
+	   personality gives its own */
+	--ribbon-floor: var(--pure-black);
+}
+/*NIGHT*/ body.theme-dark {
+	/* THE NIGHT MODE of Bento, generated into the library as design/themes/dark.css.
+	   A MODE, not a personality: it redefines ROLES ONLY and never a primitive,
+	   never a selector that is not a token block. The class forces the mode
+	   (`theme-dark` / `theme-light`, remembered under the keys `theme` and
+	   `ds-admin-theme`); the media query follows the OS unless the light class
+	   says otherwise.
+
+	   What actually flips: the neutral roles walk down the fog ramp (0→11 become
+	   11→2), ALL SIX `-text` hues walk UP their ramps so they stay readable on a
+	   dark ground, the emphasis surface goes fully black and grows a bone edge,
+	   and the elevation's two knobs change — not the six shadow numbers.
+
+	   The distinction that matters, because getting it wrong is what left
+	   --warning-text behind for a while: the SOLID roles do not flip — coral,
+	   mint, butter and violet stay put, because a signal is a signal and
+	   --warning is painted with --warning-fg on top of it either way. The
+	   `-text` roles are the opposite case: they are the hue read ON the page, so
+	   every one of them has to walk up its ramp at night. There are six, not
+	   five. --warning-text was the one that got missed: --butter-11 (#745f11) is
+	   2.4:1 on the night card — under even the 3:1 large-text floor — where its
+	   four siblings sit between 5.8:1 and 9:1. It is --butter-8 here, the step
+	   coral, mint and violet already take. Harbor had it right all along
+	   (--yellow-10 by day, --yellow-3 at night); this file was the outlier. */
+	--bg: var(--fog-11);
+	--bg-elevated: var(--fog-10);
+	--bg-inset: var(--fog-9);
+	--bg-hover: var(--fog-8);
+	--bg-cell: var(--fog-10);
+	--bg-emphasis: var(--pure-black);
+	--bg-emphasis-inset: var(--soot-11);
+	--fg: var(--soot-0);
+	--fg-muted: var(--fog-4);
+	--fg-faint: var(--fog-5);
+	--fg-disabled: var(--fg-faint);            /* 5.5:1 on --tertiary */
+	--border: color-mix(in srgb, var(--soot-0) 10%, transparent);
+	--border-strong: color-mix(in srgb, var(--soot-0) 16%, transparent);
+	--border-emphasis-edge: color-mix(in srgb, var(--soot-0) 12%, transparent);
+	--ring: var(--soot-0);
+	--primary-text: var(--coral-8);
+	--danger-text: var(--coral-8);
+	--success-text: var(--mint-8);
+	--warning-text: var(--butter-8);
+	--info-text: var(--blue-3);
+	--accent-text: var(--iris-8);
+	/* the five showcase slots take the same walk, for the same reason. The
+	   SOLID of a slot does not flip — a showcase fill is painted with
+	   --showcase-N-fg on top of it either way, and those five pairs measure
+	   identically in both modes — while every hue read ON the page has to climb
+	   its ramp at night. These are the steps their five sibling -text roles
+	   directly above have just taken: 6.6:1 to 11.8:1 on the night card. */
+	--showcase-1-text: var(--coral-8);
+	--showcase-2-text: var(--mint-8);
+	--showcase-3-text: var(--butter-8);
+	--showcase-4-text: var(--iris-8);
+	--showcase-5-text: var(--blue-3);
+	--layer-base: var(--fog-4);
+	--layer-themes: var(--blue-3);
+	--layer-patterns: var(--iris-8);
+	--layer-components: var(--mint-8);
+	--layer-utilities: var(--butter-8);
+	--layer-pages: var(--coral-8);
+	--elevation-color: var(--pure-black);
+	--elevation-near: 30%;
+	--elevation-far: 35%;
+	/* the signal fill keeps its white ink at night */
+	--primary: var(--coral-11);
+	--primary-fg: var(--fog-0);
+	--primary-hover: color-mix(in srgb, var(--coral-12) 22%, var(--coral-11));
+}
+}

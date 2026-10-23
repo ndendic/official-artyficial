@@ -1,0 +1,11 @@
+<!-- page: title="Home" layout="" -->
+<section id="home-hero" class="hm-hero" aria-labelledby="home-h">
+	<h2 id="home-h">What are we making?</h2>
+	<p class="hm-lead">The line at the foot of the sheet is the assistant. Rest on it, tap it, or press <kbd class="rt-kbd">/</kbd>.</p>
+	<ul class="hm-try" aria-label="Try a prompt">
+		<li><button type="button" class="hm-chip" data-on:click="window.dispatchEvent(new CustomEvent('pill:prompt', {detail: 'Summarise the work page'}))">Summarise the work page</button></li>
+		<li><button type="button" class="hm-chip" data-on:click="window.dispatchEvent(new CustomEvent('pill:prompt', {detail: 'Explain this shell'}))">Explain this shell</button></li>
+		<li class="hm-to-dark"><button type="button" class="hm-chip" data-on:click="window.dispatchEvent(new CustomEvent('pill:prompt', {detail: 'Switch to dark'}))">Switch to dark</button></li>
+		<li class="hm-to-light"><button type="button" class="hm-chip" data-on:click="window.dispatchEvent(new CustomEvent('pill:prompt', {detail: 'Switch to light'}))">Switch to light</button></li>
+	</ul>
+</section>

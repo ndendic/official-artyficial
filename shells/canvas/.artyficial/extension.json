@@ -1,0 +1,29 @@
+{
+  "name": "canvas",
+  "displayName": "Canvas",
+  "kind": "shell",
+  "version": "0.1.5",
+  "description": "RT Station's scaffold Page Shell until now: a collapsible sidebar with the page tree, a title bar with the stream lamp, the tray and an inspector column. All 7 Patch Regions of the standard Stage.",
+  "publisher": {
+    "name": "Artyficial",
+    "url": "https://github.com/ndendic/official-artyficial"
+  },
+  "repository": "https://github.com/ndendic/official-artyficial",
+  "license": "MIT",
+  "tags": [
+    "shell",
+    "sidebar",
+    "inspector",
+    "classic"
+  ],
+  "screenshots": [
+    ".artyficial/screenshot-day.webp",
+    ".artyficial/screenshot-night.webp"
+  ],
+  "readme": "README.md",
+  "platform": {
+    "min": "0.20.1",
+    "max_exclusive": null
+  },
+  "manifest": "manifest.json"
+}

@@ -1,0 +1,32 @@
+{
+	"name": "ledger",
+	"version": "1.0.4",
+	"kind": "theme",
+	"title": "Ledger",
+	"description": "Executive and finance: warm stone paper, a deep evergreen emphasis surface, gold as the one decisive action, indigo as the quiet mark, and serif figures.",
+	"entry": "ledger.css",
+	"preview": null,
+	"datastart": {
+		"min": "0.20.1"
+	},
+	"modes": [
+		"day",
+		"night"
+	],
+	"faces": [
+		"Albert Sans",
+		"JetBrains Mono",
+		"Literata"
+	],
+	"license": "MIT",
+	"files": {
+		".artyficial/extension.json": "sha256:220fadf6f7215d656832d7768fb7a399c1022636a9ecd0f8b244c55a010ae1f9",
+		".artyficial/screenshot-day.webp": "sha256:3abe3dd5fb7af4c1b02a432e5af9cee120c054090a4d5a8b393340d8602a5161",
+		".artyficial/screenshot-night.webp": "sha256:bce25e04191a47078a9c7ea61d005b822d696a210e5814e41d80b9b88e0d091a",
+		"LICENSE": "sha256:b23a1e727268b4e1da945af882c0e6a86cf056c3f68ff86527c0bfdb65aecf89",
+		"README.md": "sha256:bee901172a8e016942578eec47b05e727095efad321191fec2ecdb3de047042b",
+		"ledger.css": "sha256:30d998e4cd99131a33a6e72e254731a79b9f6ea386facf08d52a12604da5f0bc",
+		"ledger.default.css": "sha256:28ec8b005b0ebf392b76e25803ee48be220ba294314616a0ba08e5424a49591e",
+		"ledger.src.css": "sha256:e4dfcb0450e3d11d7c52c4c544c00c5086c700ed382f8321ac297d153d18df87"
+	}
+}

@@ -1,0 +1,33 @@
+{
+	"name": "folio",
+	"version": "1.0.3",
+	"kind": "theme",
+	"title": "Folio",
+	"description": "Editorial: warm paper and ink by day, deep warm ink by night, Libron (Literata behind it) for the headings and the reading face, an oxblood signal, a forest accent and an inked chart palette.",
+	"entry": "folio.css",
+	"preview": null,
+	"datastart": {
+		"min": "0.20.1"
+	},
+	"modes": [
+		"day",
+		"night"
+	],
+	"faces": [
+		"Albert Sans",
+		"JetBrains Mono",
+		"Libron",
+		"Literata"
+	],
+	"license": "MIT",
+	"files": {
+		".artyficial/extension.json": "sha256:0eac81e57b9afafe45ce05441a8ed310ac46f96cf7246678d9664d14da708e32",
+		".artyficial/screenshot-day.webp": "sha256:b7b0405977710c8c05d709da6d6291fcf45314af423d8ebee54d6b385572dca2",
+		".artyficial/screenshot-night.webp": "sha256:e2e363e31bc7fb50dd19de160cd5aba2678a9c8b771c81368f8d4b16b350b01c",
+		"LICENSE": "sha256:b23a1e727268b4e1da945af882c0e6a86cf056c3f68ff86527c0bfdb65aecf89",
+		"README.md": "sha256:f9d354a617708f5e517e47d3af1082b596a83c6f46a870bc64a4301b56677a50",
+		"folio.css": "sha256:efd281cea1c40682155f7cb08b940ef5e4d95128bba104b10da44deaf5d23bd3",
+		"folio.default.css": "sha256:01625e7e3d5a3476911d0ef783537036efd17c3886e7e9b55dc5621c0d317e9e",
+		"folio.src.css": "sha256:8252e089b355f0716e6bcb16bd0677b4ad984e25797e7ec80fcbf56fe1250cef"
+	}
+}

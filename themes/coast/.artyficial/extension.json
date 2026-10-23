@@ -1,0 +1,29 @@
+{
+  "name": "coast",
+  "displayName": "Coast",
+  "kind": "theme",
+  "version": "1.0.3",
+  "description": "Warm coastal: Wheat paper by day and Onyx water by night, Oceanic as the one decisive action (Nectarine at night), Nectarine as the warm mark, mono figures. From the Onyx, Wheat, Oceanic, Nectarine board.",
+  "publisher": {
+    "name": "Artyficial",
+    "url": "https://github.com/ndendic/official-artyficial"
+  },
+  "repository": "https://github.com/ndendic/official-artyficial",
+  "license": "MIT",
+  "tags": [
+    "theme",
+    "warm",
+    "coastal",
+    "teal"
+  ],
+  "screenshots": [
+    ".artyficial/screenshot-day.webp",
+    ".artyficial/screenshot-night.webp"
+  ],
+  "readme": "README.md",
+  "platform": {
+    "min": "0.20.1",
+    "max_exclusive": null
+  },
+  "manifest": "manifest.json"
+}

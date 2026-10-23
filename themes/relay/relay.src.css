@@ -1,0 +1,167 @@
+/* relay — futuristic / agentic. Cool graphite, a near-black emphasis
+   surface, electric cyan as the one loud colour, violet as the agent mark.
+   Mono hero face: figures and titles read like a terminal readout. */
+@layer themes {
+/*DAY*/ body {
+	/* a blue-black: Console Black with an indigo cast. A personality may mint
+	   its own primitive ONLY as a mix of primitives, never a literal. */
+	--relay-ink: color-mix(in srgb, var(--indigo-12) 30%, var(--soot-12));
+	--bg: var(--fog-2);
+	--bg-elevated: var(--fog-0);
+	--bg-inset: var(--fog-1);
+	--bg-hover: var(--fog-3);
+	--bg-cell: var(--fog-0);
+	--bg-emphasis: var(--relay-ink);
+	--bg-emphasis-inset: color-mix(in srgb, var(--pure-white) 8%, var(--relay-ink));
+	--bg-emphasis-hover: color-mix(in srgb, var(--pure-white) 12%, var(--relay-ink));
+	--bg-emphasis-inset-hover: color-mix(in srgb, var(--pure-white) 16%, var(--relay-ink));
+	--bg-on-emphasis-well: color-mix(in srgb, var(--pure-white) 8%, transparent);
+	--bg-overlay: color-mix(in srgb, var(--fog-12) 40%, transparent);
+	--fg: var(--fog-12);
+	--fg-muted: var(--fog-8);
+	--fg-faint: var(--fog-7);
+	--fg-disabled: var(--fog-7);
+	--fg-on-emphasis: var(--fog-0);
+	--fg-on-emphasis-muted: color-mix(in srgb, var(--fog-0) 66%, transparent);
+	--fg-on-emphasis-hover: var(--fog-2);
+	--border: color-mix(in srgb, var(--fog-12) 9%, transparent);
+	--border-strong: color-mix(in srgb, var(--fog-12) 15%, transparent);
+	--border-on-emphasis: color-mix(in srgb, var(--cyan-3) 18%, transparent);
+	--border-emphasis-edge: transparent;
+	--ring: var(--cyan-9);
+	--selection: color-mix(in srgb, var(--cyan-4) 30%, transparent);
+	--primary: var(--cyan-4);
+	--primary-fg: var(--fog-12);
+	--primary-hover: var(--cyan-3);
+	--primary-active: var(--cyan-5);
+	--primary-wash: color-mix(in srgb, var(--cyan-4) 16%, transparent);
+	--primary-text: var(--cyan-10);
+	--accent: var(--violet-3);
+	--accent-fg: var(--violet-12);
+	--accent-hover: var(--violet-2);
+	--accent-active: var(--violet-4);
+	--accent-wash: color-mix(in srgb, var(--violet-3) 18%, transparent);
+	--accent-text: var(--violet-8);
+	--success: var(--teal-4);
+	--success-fg: var(--teal-12);
+	--success-text: var(--teal-10);
+	--success-bg: color-mix(in srgb, var(--teal-4) 18%, transparent);
+	--success-border: color-mix(in srgb, var(--teal-4) 42%, transparent);
+	--success-halo: color-mix(in srgb, var(--teal-4) 28%, transparent);
+	--warning: var(--yellow-4);
+	--warning-fg: var(--yellow-12);
+	--warning-text: var(--yellow-11);
+	--warning-bg: color-mix(in srgb, var(--yellow-4) 22%, transparent);
+	--warning-border: color-mix(in srgb, var(--yellow-4) 48%, transparent);
+	--warning-halo: color-mix(in srgb, var(--yellow-4) 34%, transparent);
+	--danger: var(--pink-5);
+	--danger-fg: var(--fog-12);
+	--danger-text: var(--pink-9);
+	--danger-bg: color-mix(in srgb, var(--pink-5) 14%, transparent);
+	--danger-border: color-mix(in srgb, var(--pink-5) 40%, transparent);
+	--danger-halo: color-mix(in srgb, var(--pink-5) 28%, transparent);
+	--info: var(--indigo-3);
+	--info-fg: var(--indigo-12);
+	--info-text: var(--indigo-9);
+	--info-bg: color-mix(in srgb, var(--indigo-3) 18%, transparent);
+	--info-border: color-mix(in srgb, var(--indigo-3) 42%, transparent);
+	--info-halo: color-mix(in srgb, var(--indigo-3) 28%, transparent);
+	--showcase-1: var(--cyan-4);    --showcase-1-fg: var(--fog-12);    --showcase-1-text: var(--cyan-10);   --showcase-1-wash: color-mix(in srgb, var(--cyan-4) 16%, transparent);
+	--showcase-2: var(--violet-3);  --showcase-2-fg: var(--violet-12);  --showcase-2-text: var(--violet-8);  --showcase-2-wash: color-mix(in srgb, var(--violet-3) 18%, transparent);
+	--showcase-3: var(--teal-4);    --showcase-3-fg: var(--teal-12);    --showcase-3-text: var(--teal-10);   --showcase-3-wash: color-mix(in srgb, var(--teal-4) 18%, transparent);
+	--showcase-4: var(--yellow-4);  --showcase-4-fg: var(--yellow-12);  --showcase-4-text: var(--yellow-11); --showcase-4-wash: color-mix(in srgb, var(--yellow-4) 22%, transparent);
+	--showcase-5: var(--indigo-3);  --showcase-5-fg: var(--indigo-12);  --showcase-5-text: var(--indigo-9);  --showcase-5-wash: color-mix(in srgb, var(--indigo-3) 18%, transparent);
+	--neutral-halo: color-mix(in srgb, var(--fog-6) 22%, transparent);
+	--danger-on-emphasis-text: var(--pink-3);
+	--success-on-emphasis-text: var(--teal-3);
+	--warning-on-emphasis-text: var(--yellow-3);
+	--info-on-emphasis-text: var(--indigo-2);
+	--primary-on-emphasis-text: var(--cyan-3);
+	--accent-on-emphasis-text: var(--violet-2);
+	--chart-1: var(--cyan-4);
+	--chart-2: var(--violet-4);
+	--chart-3: var(--teal-4);
+	--chart-4: var(--yellow-4);
+	--chart-5: var(--pink-4);
+	--chart-6: var(--fog-6);
+	--elevation-color: var(--fog-12);
+	--elevation-near: 5%;
+	--elevation-far: 8%;
+	/* voice: the mono face as the hero, caps tracked wide like a readout */
+	--font-hero: var(--font-mono);
+	--weight-heavy: var(--font-weight-7);
+	--tracking-title: 0;
+	--tracking-figure: -0.01em;
+	--tracking-hero: -0.03em;
+	--tracking-caps: 0.12em;
+	/* completed from the floor (the library's bento.css), so the theme never falls back on another theme: the -secondary and -tertiary aliases follow this theme's own roles; the layer identity is Bento's */
+	--secondary: var(--bg-emphasis);
+	--secondary-fg: var(--fg-on-emphasis);
+	--secondary-hover: var(--bg-emphasis-hover);
+	--secondary-active: var(--bg-emphasis-inset);
+	--secondary-wash: var(--bg-emphasis-inset);
+	--secondary-text: var(--fg);
+	--tertiary: var(--bg-inset);
+	--tertiary-fg: var(--fg);
+	--tertiary-hover: var(--bg-hover);
+	--tertiary-active: var(--bg-hover);
+	--tertiary-wash: var(--bg-inset);
+	--tertiary-text: var(--fg-muted);
+	--layer-base: var(--fog-7);
+	--layer-themes: var(--blue-9);
+	--layer-patterns: var(--iris-11);
+	--layer-components: var(--mint-11);
+	--layer-utilities: var(--butter-11);
+	--layer-pages: var(--coral-11);
+	--layer-base-on-emphasis: var(--fog-4);
+	--layer-themes-on-emphasis: var(--blue-3);
+	--layer-patterns-on-emphasis: var(--iris-8);
+	--layer-components-on-emphasis: var(--mint-8);
+	--layer-utilities-on-emphasis: var(--butter-8);
+	--layer-pages-on-emphasis: var(--coral-8);
+	/* the ribbon-deck shell's dark ribbon floor (pages/_shell.css): Bento's neutral black */
+	--ribbon-floor: var(--pure-black);
+}
+/*NIGHT*/ body.theme-dark {
+	--bg: var(--fog-11);
+	--bg-elevated: var(--fog-10);
+	--bg-inset: var(--fog-9);
+	--bg-hover: var(--fog-8);
+	--bg-cell: var(--fog-10);
+	--bg-emphasis: color-mix(in srgb, var(--pure-black) 50%, var(--relay-ink));
+	--bg-emphasis-inset: color-mix(in srgb, var(--pure-white) 7%, var(--relay-ink));
+	--fg: var(--soot-0);
+	--fg-muted: var(--fog-4);
+	--fg-faint: var(--fog-5);
+	--fg-disabled: var(--fog-5);
+	--border: color-mix(in srgb, var(--soot-0) 10%, transparent);
+	--border-strong: color-mix(in srgb, var(--soot-0) 16%, transparent);
+	--border-emphasis-edge: color-mix(in srgb, var(--cyan-3) 22%, transparent);
+	--ring: var(--cyan-3);
+	--primary-text: var(--cyan-3);
+	--danger-text: var(--pink-3);
+	--success-text: var(--teal-3);
+	--warning-text: var(--yellow-3);
+	--info-text: var(--indigo-2);
+	--accent-text: var(--violet-2);
+	--showcase-1-text: var(--cyan-3);
+	--showcase-2-text: var(--violet-2);
+	--showcase-3-text: var(--teal-3);
+	--showcase-4-text: var(--yellow-3);
+	--showcase-5-text: var(--indigo-2);
+	--elevation-color: var(--pure-black);
+	--elevation-near: 32%;
+	--elevation-far: 40%;
+	/* completed from the floor (the library's dark.css): the layer identity at night is Bento's */
+	--layer-base: var(--fog-4);
+	--layer-themes: var(--blue-3);
+	--layer-patterns: var(--iris-8);
+	--layer-components: var(--mint-8);
+	--layer-utilities: var(--butter-8);
+	--layer-pages: var(--coral-8);
+	/* the signal keeps its day fill and ink at night (complete against Bento's night) */
+	--primary: var(--cyan-4);
+	--primary-fg: var(--fog-12);
+	--primary-hover: var(--cyan-3);
+}
+}

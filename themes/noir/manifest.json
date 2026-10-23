@@ -1,0 +1,32 @@
+{
+	"name": "noir",
+	"version": "1.0.2",
+	"kind": "theme",
+	"title": "Noir",
+	"description": "One loud lime on near-black, a warm near-white day that keeps the same lime, Big Shoulders Display for the hero.",
+	"entry": "noir.css",
+	"preview": null,
+	"datastart": {
+		"min": "0.20.1"
+	},
+	"modes": [
+		"day",
+		"night"
+	],
+	"faces": [
+		"Albert Sans",
+		"Big Shoulders Display",
+		"JetBrains Mono"
+	],
+	"license": "MIT",
+	"files": {
+		".artyficial/extension.json": "sha256:c7bcee7ca9fddc95fe031f8b5588db1c05c0765cf5badf9f6e6de2f9bcaeccb3",
+		".artyficial/screenshot-day.webp": "sha256:9b3e7c1e978c811980be2d888c3c37a5e3aee6fc22670f8994c07492701918cf",
+		".artyficial/screenshot-night.webp": "sha256:73155a8dfd9e6c802a22fe829dfbe9f64d15427998452fc7cb48b4e5c0dcaba7",
+		"LICENSE": "sha256:b23a1e727268b4e1da945af882c0e6a86cf056c3f68ff86527c0bfdb65aecf89",
+		"README.md": "sha256:4bab3ffcaa042c4299da519cc8a53ab97cf699ba6a48d58ed5ac77e6d5b8e035",
+		"noir.css": "sha256:0ae969d1a9b757133c7a21f249c73acb695e5f1272e328af24b3eab27e1b6532",
+		"noir.default.css": "sha256:2bbabd7d18f5310700f30a86dea276f9884261cebf9af9739e30f3ccc448d00a",
+		"noir.src.css": "sha256:b25df3b4c17f143e04c25d696a1ef83ba765a0192d6b1996903be5f1dbbca0db"
+	}
+}

@@ -1,0 +1,29 @@
+{
+  "name": "folio",
+  "displayName": "Folio",
+  "kind": "theme",
+  "version": "1.0.3",
+  "description": "Editorial: warm paper and ink by day, deep warm ink by night, Libron (Literata behind it) for the headings and the reading face, an oxblood signal, a forest accent and an inked chart palette.",
+  "publisher": {
+    "name": "Artyficial",
+    "url": "https://github.com/ndendic/official-artyficial"
+  },
+  "repository": "https://github.com/ndendic/official-artyficial",
+  "license": "MIT",
+  "tags": [
+    "theme",
+    "editorial",
+    "serif",
+    "warm"
+  ],
+  "screenshots": [
+    ".artyficial/screenshot-day.webp",
+    ".artyficial/screenshot-night.webp"
+  ],
+  "readme": "README.md",
+  "platform": {
+    "min": "0.20.1",
+    "max_exclusive": null
+  },
+  "manifest": "manifest.json"
+}

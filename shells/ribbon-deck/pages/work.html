@@ -1,0 +1,101 @@
+<!-- page: title="Operations" layout="" -->
+<!-- work: the shell around realistic content, adapted from the t-dashboard
+     starter. DEMO DATA in page signals on the Domain Path grammar ($_ops.*). -->
+<header id="ops-head" class="w-head" data-signals='{"_ops":{"metrics":{"range":"m"},"revenue":{"labels":{"w":["Sun 20","Mon 21","Tue 22","Wed 23","Thu 24","Fri 25","Sat 26"],"m":["Aug 28","Aug 29","Aug 30","Aug 31","Sep 01","Sep 02","Sep 03","Sep 04","Sep 05","Sep 06","Sep 07","Sep 08","Sep 09","Sep 10","Sep 11","Sep 12","Sep 13","Sep 14","Sep 15","Sep 16","Sep 17","Sep 18","Sep 19","Sep 20","Sep 21","Sep 22","Sep 23","Sep 24","Sep 25","Sep 26"],"q":["Jul 04","Jul 11","Jul 18","Jul 25","Aug 01","Aug 08","Aug 15","Aug 22","Aug 29","Sep 05","Sep 12","Sep 19","Sep 26"]},"cur":{"w":[16694,11780,13066,13377,14207,12805,15716],"m":[11509,13614,15994,10726,12909,12681,12112,12824,13948,15501,10297,11255,11616,12134,10939,13137,15017,11400,12329,12336,13708,12333,16660,16694,11780,13066,13377,14207,12805,15716],"q":[80648,77226,77201,88886,84475,86879,97803,93884,95945,101627,100087,108525,108970]},"prev":{"w":[13488,9090,11454,10102,12111,10459,11821],"m":[9743,10181,13292,8094,9798,10514,11065,9823,10975,13513,9669,9692,9563,11466,8201,12089,12025,8781,9428,9927,12493,9594,14363,14593,9638,11171,10075,10690,10029,13875],"q":[66921,62241,66621,74234,67829,78783,86730,74286,82573,86412,92458,96932,87226]}},"orders":{"count":{"w":412,"m":1784,"q":5210},"prior":{"w":388,"m":1702,"q":4790},"rows":[{"id":"#3120","customer":"Mia Hoffmann","channel":"Online store","status":"Paid","date":"2026-09-26","total":103.97},{"id":"#3119","customer":"Noah Brooks","channel":"Wholesale","status":"Fulfilled","date":"2026-09-26","total":67.57},{"id":"#3118","customer":"Zoe Adeyemi","channel":"Marketplace","status":"Refunded","date":"2026-09-26","total":480.39},{"id":"#3117","customer":"Ethan Clarke","channel":"Partner","status":"Paid","date":"2026-09-25","total":181.45},{"id":"#3116","customer":"Aiko Tanaka","channel":"Wholesale","status":"Pending","date":"2026-09-25","total":124.56},{"id":"#3115","customer":"Lucas Moreau","channel":"Online store","status":"Paid","date":"2026-09-25","total":58.2},{"id":"#3114","customer":"Hana Kim","channel":"Retail","status":"Fulfilled","date":"2026-09-24","total":212.0},{"id":"#3113","customer":"Arjun Rao","channel":"Marketplace","status":"Failed","date":"2026-09-24","total":39.99},{"id":"#3112","customer":"Sofia Rossi","channel":"Online store","status":"Paid","date":"2026-09-24","total":96.4}],"picked":[]},"conversion":{"rate":{"w":3.42,"m":3.18,"q":3.05},"prior":{"w":3.21,"m":3.25,"q":2.88}},"shoppers":{"now":[38,41,44,40,47,52,49,55,51,58,61,57,63,66]}}}'>
+  <!-- the shell's title line names the page (the h1, docking on scroll);
+       the page names its eyebrow -->
+  <span data-page-eyebrow hidden>Storefront · this workspace</span>
+  <div class="w-tools">
+    <fieldset class="rt-toggle-group" data-size="sm" aria-label="Range">
+      <label><input type="radio" name="ops-range" value="w" data-bind:_ops.metrics.range>7d</label>
+      <label><input type="radio" name="ops-range" value="m" checked data-bind:_ops.metrics.range>30d</label>
+      <label><input type="radio" name="ops-range" value="q" data-bind:_ops.metrics.range>90d</label>
+    </fieldset>
+    <button class="rt-btn" data-variant="signal" data-size="sm" data-on:click="document.getElementById('ops-toaster').toast({category: 'success', title: 'Report exported', description: 'operations-' + $_ops.metrics.range + '.csv'})">
+      <svg data-icon="inline-start" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>
+      Export
+    </button>
+  </div>
+  <rt-toaster id="ops-toaster" align="end"></rt-toaster>
+</header>
+
+<section id="ops-kpis" class="w-kpis" aria-label="Key figures">
+  <article class="rt-card w-kpi" data-size="sm">
+    <header>
+      <h3>Revenue</h3>
+      <span class="card-action rt-badge" data-variant="success" data-attr:data-variant="$_ops.revenue.cur[$_ops.metrics.range].reduce((a, b) => a + b, 0) >= $_ops.revenue.prev[$_ops.metrics.range].reduce((a, b) => a + b, 0) ? 'success' : 'destructive'" data-text="((a, b) => (a >= b ? '+' : '') + ((a / b - 1) * 100).toFixed(1) + '%')($_ops.revenue.cur[$_ops.metrics.range].reduce((a, b) => a + b, 0), $_ops.revenue.prev[$_ops.metrics.range].reduce((a, b) => a + b, 0))">+21.0%</span>
+    </header>
+    <section class="w-kpi-body">
+      <output class="w-figure" data-text="(x => x >= 1e6 ? '$' + (x / 1e6).toFixed(2) + 'M' : '$' + (x / 1e3).toFixed(1) + 'k')($_ops.revenue.cur[$_ops.metrics.range].reduce((a, b) => a + b, 0))">$392.6k</output>
+      <rt-chart type="sparkline" label="Revenue per bucket" data='{"series":[{"name":"Revenue","values":[15017,11400,12329,12336,13708,12333,16660,16694,11780,13066,13377,14207,12805,15716],"color":1}]}' data-preserve-attr="data" data-attr:data="JSON.stringify({series: [{name: 'Revenue', values: $_ops.revenue.cur[$_ops.metrics.range].slice(-14), color: 1}]})"></rt-chart>
+    </section>
+  </article>
+  <article class="rt-card w-kpi" data-size="sm">
+    <header>
+      <h3>Orders</h3>
+      <span class="card-action rt-badge" data-variant="success" data-attr:data-variant="$_ops.orders.count[$_ops.metrics.range] >= $_ops.orders.prior[$_ops.metrics.range] ? 'success' : 'destructive'" data-text="((a, b) => (a >= b ? '+' : '') + ((a / b - 1) * 100).toFixed(1) + '%')($_ops.orders.count[$_ops.metrics.range], $_ops.orders.prior[$_ops.metrics.range])">+4.8%</span>
+    </header>
+    <section class="w-kpi-body">
+      <output class="w-figure" data-text="$_ops.orders.count[$_ops.metrics.range].toLocaleString('en-US')">1,784</output>
+      <rt-chart type="sparkline" label="Orders per bucket" data='{"series":[{"name":"Orders","values":[12025,8781,9428,9927,12493,9594,14363,14593,9638,11171,10075,10690,10029,13875],"color":5}]}' data-preserve-attr="data" data-attr:data="JSON.stringify({series: [{name: 'Orders', values: $_ops.revenue.prev[$_ops.metrics.range].slice(-14), color: 5}]})"></rt-chart>
+    </section>
+  </article>
+  <article class="rt-card w-kpi" data-size="sm">
+    <header>
+      <h3>Conversion</h3>
+      <span class="card-action rt-badge" data-variant="destructive" data-attr:data-variant="$_ops.conversion.rate[$_ops.metrics.range] >= $_ops.conversion.prior[$_ops.metrics.range] ? 'success' : 'destructive'" data-text="(($_ops.conversion.rate[$_ops.metrics.range] >= $_ops.conversion.prior[$_ops.metrics.range]) ? '+' : '') + ($_ops.conversion.rate[$_ops.metrics.range] - $_ops.conversion.prior[$_ops.metrics.range]).toFixed(2) + ' pt'">-0.07 pt</span>
+    </header>
+    <section class="w-kpi-body">
+      <output class="w-figure" data-text="$_ops.conversion.rate[$_ops.metrics.range].toFixed(2) + '%'">3.18%</output>
+      <rt-chart type="sparkline" label="Conversion per bucket" data='{"series":[{"name":"Conversion","values":[79,51,10,17,31,14,73,10,43,68,88,45,1,2],"color":4}]}' data-preserve-attr="data" data-attr:data="JSON.stringify({series: [{name: 'Conversion', values: $_ops.revenue.cur[$_ops.metrics.range].slice(-14).map(v => v % 97), color: 4}]})"></rt-chart>
+    </section>
+  </article>
+  <article class="rt-card w-kpi" data-size="sm">
+    <header>
+      <h3>Shoppers now</h3>
+      <span class="card-action rt-badge" data-variant="secondary">live</span>
+    </header>
+    <section class="w-kpi-body">
+      <output class="w-figure" data-text="$_ops.shoppers.now.at(-1)">66</output>
+      <rt-chart type="sparkline" curve="step" label="Active shoppers, last minutes" data='{"series":[{"name":"Active","values":[38,41,44,40,47,52,49,55,51,58,61,57,63,66],"color":3}]}' data-preserve-attr="data" data-attr:data="JSON.stringify({series: [{name: 'Active', values: $_ops.shoppers.now, color: 3}]})"></rt-chart>
+    </section>
+  </article>
+</section>
+
+<section id="ops-trend" class="rt-card w-trend" aria-labelledby="ops-trend-title">
+  <header>
+    <h3 id="ops-trend-title">Revenue over time</h3>
+    <p>Gross sales against the previous period</p>
+  </header>
+  <section>
+    <rt-chart id="ops-trend-chart" type="area" legend height="260" label="Revenue this period against the previous period" data='{"labels":["Aug 28","Aug 29","Aug 30","Aug 31","Sep 01","Sep 02","Sep 03","Sep 04","Sep 05","Sep 06","Sep 07","Sep 08","Sep 09","Sep 10","Sep 11","Sep 12","Sep 13","Sep 14","Sep 15","Sep 16","Sep 17","Sep 18","Sep 19","Sep 20","Sep 21","Sep 22","Sep 23","Sep 24","Sep 25","Sep 26"],"series":[{"name":"Previous period","values":[9743,10181,13292,8094,9798,10514,11065,9823,10975,13513,9669,9692,9563,11466,8201,12089,12025,8781,9428,9927,12493,9594,14363,14593,9638,11171,10075,10690,10029,13875],"color":5},{"name":"This period","values":[11509,13614,15994,10726,12909,12681,12112,12824,13948,15501,10297,11255,11616,12134,10939,13137,15017,11400,12329,12336,13708,12333,16660,16694,11780,13066,13377,14207,12805,15716],"color":1}]}' data-preserve-attr="data"
+      format='{"style":"currency","currency":"USD","maximumFractionDigits":0}'
+      data-attr:data="JSON.stringify({labels: $_ops.revenue.labels[$_ops.metrics.range], series: [{name: 'Previous period', values: $_ops.revenue.prev[$_ops.metrics.range], color: 5}, {name: 'This period', values: $_ops.revenue.cur[$_ops.metrics.range], color: 1}]})"></rt-chart>
+  </section>
+</section>
+
+<section id="ops-mix" class="rt-card w-mix" aria-labelledby="ops-mix-title">
+  <header>
+    <h3 id="ops-mix-title">Sales by channel</h3>
+    <p>Share of revenue, selected period</p>
+  </header>
+  <section>
+    <rt-chart id="ops-mix-chart" type="donut" legend center-label="Revenue" label="Revenue by channel" data='{"labels":["Online store","Marketplace","Retail","Wholesale","Partner"],"series":[{"name":"Revenue","values":[141345,94230,70672,54967,31410]}]}' data-preserve-attr="data"
+      format='{"style":"currency","currency":"USD","maximumFractionDigits":0}'
+      data-attr:data="JSON.stringify({labels: ['Online store', 'Marketplace', 'Retail', 'Wholesale', 'Partner'], series: [{name: 'Revenue', values: ((t) => [36, 24, 18, 14, 8].map(p => Math.round(p / 100 * t)))($_ops.revenue.cur[$_ops.metrics.range].reduce((a, b) => a + b, 0))}]})"></rt-chart>
+  </section>
+</section>
+
+<section id="ops-orders" class="rt-card w-orders" aria-labelledby="ops-orders-title">
+  <header>
+    <h3 id="ops-orders-title">Recent orders</h3>
+    <p>Filter, sort and select to act on several at once.</p>
+  </header>
+  <section>
+    <rt-data-table id="ops-orders-table" page-size="6" selectable searchable sort="date:desc"
+      search-placeholder="Filter orders…" caption="Recent orders" empty="No orders match this filter."
+      columns='[{"key":"id","label":"Order"},{"key":"customer","label":"Customer"},{"key":"channel","label":"Channel"},{"key":"status","label":"Status","badges":{"Paid":"success","Fulfilled":"secondary","Pending":"warning","Refunded":"outline","Failed":"destructive"}},{"key":"date","label":"Date","format":"date"},{"key":"total","label":"Total","align":"end","format":"currency","currency":"USD"}]'
+      data-attr:rows="JSON.stringify($_ops.orders.rows)" data-preserve-attr="rows"
+      data-on:rt-data-table-select="$_ops.orders.picked = evt.detail.selected"></rt-data-table>
+  </section>
+</section>

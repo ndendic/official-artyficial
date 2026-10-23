@@ -1,0 +1,31 @@
+{
+	"name": "relay",
+	"version": "1.0.4",
+	"kind": "theme",
+	"title": "Relay",
+	"description": "Futuristic and agentic: cool graphite, a near-black emphasis surface, electric cyan as the signal, violet as the agent mark and a mono hero face.",
+	"entry": "relay.css",
+	"preview": null,
+	"datastart": {
+		"min": "0.20.1"
+	},
+	"modes": [
+		"day",
+		"night"
+	],
+	"faces": [
+		"Albert Sans",
+		"JetBrains Mono"
+	],
+	"license": "MIT",
+	"files": {
+		".artyficial/extension.json": "sha256:6064fe239a31c9b23bd3e193ecd0aeaef0732cda159601d76fad72247e9713f7",
+		".artyficial/screenshot-day.webp": "sha256:b7e7570e5713c790f77d1f5ebde9d2469612179629bb7bb75c298983ec467545",
+		".artyficial/screenshot-night.webp": "sha256:2cb4382a52d2eef4b9a8cd6f0170e0013d55ca8ea92ae8e7033ec2ff5e4274ee",
+		"LICENSE": "sha256:b23a1e727268b4e1da945af882c0e6a86cf056c3f68ff86527c0bfdb65aecf89",
+		"README.md": "sha256:5dcbbf6f937f9a78ef11d0ea999efeffc1c50dc1c1ce7f548e778fc460a21d33",
+		"relay.css": "sha256:9d9c3f6a14f77bfd56d11b0455a9aff206d9293dd3026e731e6e2ac3a7ae7319",
+		"relay.default.css": "sha256:10ae31a55850bfcd163bdde72d7dbef9ca5898343342ec58e75836d181a9fa96",
+		"relay.src.css": "sha256:bee7e1783b107b37bf5d0b3d8ff608d6ad7d9aa0d7181b499b5e4c93b66701a0"
+	}
+}

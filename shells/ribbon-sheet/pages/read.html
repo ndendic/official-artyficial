@@ -1,0 +1,182 @@
+<!-- page: title="From mood board to theme: how Coast was made" layout="reading" -->
+<!-- read: a long read that wears every reading component, so a theme can be tried on prose as well as on
+     dashboards. The illustrations are inline SVG painted with the theme's own roles (pages/read.css), so they
+     recolour with every theme; the palette figure keeps the board's literal colours on purpose. -->
+<article id="read-post" class="rd-post" aria-label="From mood board to theme: how Coast was made">
+	<header class="rd-head">
+		<!-- the shell's title line shows the Page title; this names its eyebrow -->
+		<p class="rd-kicker" data-page-eyebrow hidden>Design notes</p>
+		<p class="rd-lead">Four colours on a Pinterest board became a complete theme in an afternoon. This is the path they took: from a picture, to roles, to numbers that decide, to a Workspace that wears them in daylight and at night.</p>
+		<div class="rd-byline">
+			<span class="rt-avatar" data-variant="signal"><span>RC</span></span>
+			<span><b>RT Coat</b><small><time datetime="2026-10-16">16 October 2026</time> · 6 min read</small></span>
+			<span class="rd-tags"><span class="rt-badge" data-variant="secondary">Themes</span><span class="rt-badge" data-variant="outline">Colour</span><span class="rt-badge" data-variant="outline">Accessibility</span></span>
+		</div>
+	</header>
+
+	<figure class="rd-hero">
+		<svg viewBox="0 0 960 400" role="img" aria-label="A stylised coast: a sun low over three bands of sea and a strip of sand, in the theme's colours">
+			<rect class="rd-sky" width="960" height="400"/>
+			<circle class="rd-sun" cx="700" cy="170" r="74"/>
+			<path class="rd-sea rd-sea-1" d="M0 230 C 120 210 240 250 360 232 S 600 212 720 232 S 900 250 960 236 V400 H0 Z"/>
+			<path class="rd-sea rd-sea-2" d="M0 270 C 140 252 260 290 400 272 S 640 252 780 274 S 920 288 960 276 V400 H0 Z"/>
+			<path class="rd-sea rd-sea-3" d="M0 310 C 160 296 300 326 460 312 S 720 296 860 314 S 940 322 960 318 V400 H0 Z"/>
+			<path class="rd-sand" d="M0 352 C 200 340 420 366 640 350 S 900 344 960 352 V400 H0 Z"/>
+		</svg>
+		<figcaption>The hero is drawn with the theme's roles (ground, action, mark, emphasis): switch the theme in Settings and the coast changes with it.</figcaption>
+	</figure>
+
+	<nav class="rd-toc" aria-label="On this page">
+		<b>On this page</b>
+		<ol>
+			<li><a href="#read-board">Four colours, one board</a></li>
+			<li><a href="#read-roles">Roles, not colours</a></li>
+			<li><a href="#read-numbers">The numbers decide</a></li>
+			<li><a href="#read-night">Night is not inverted day</a></li>
+			<li><a href="#read-try">Try it</a></li>
+		</ol>
+	</nav>
+
+	<section id="read-board" aria-labelledby="read-board-h">
+		<h3 id="read-board-h">Four colours, one board</h3>
+		<p>The board, by Jenny Henderson Studio, is as plain as a palette gets: four cards, each with its name, its hex value, and its <abbr title="red, green, blue">RGB</abbr> and <abbr title="cyan, magenta, yellow, key">CMYK</abbr> equivalents. Two of them are dark, two are light, and one of the light ones is warm enough to read as a sunset.<sup><a href="#read-fn-1" id="read-fn-1-ref">1</a></sup></p>
+		<figure class="rd-palette">
+			<svg viewBox="0 0 800 180" role="img" aria-label="The four colours of the board: Onyx, Wheat, Oceanic and Nectarine, with their hex values">
+				<g><rect x="0" y="0" width="188" height="180" rx="14" fill="#0a171d"/><text x="18" y="120" fill="#fff6e9" class="rd-sw-name">Onyx</text><text x="18" y="150" fill="#fff6e9" class="rd-sw-hex">#0A171D</text></g>
+				<g><rect x="204" y="0" width="188" height="180" rx="14" fill="#fff6e9" class="rd-sw-light"/><text x="222" y="120" fill="#0a171d" class="rd-sw-name">Wheat</text><text x="222" y="150" fill="#0a171d" class="rd-sw-hex">#FFF6E9</text></g>
+				<g><rect x="408" y="0" width="188" height="180" rx="14" fill="#003f47"/><text x="426" y="120" fill="#fff6e9" class="rd-sw-name">Oceanic</text><text x="426" y="150" fill="#fff6e9" class="rd-sw-hex">#003F47</text></g>
+				<g><rect x="612" y="0" width="188" height="180" rx="14" fill="#ffbd76"/><text x="630" y="120" fill="#0a171d" class="rd-sw-name">Nectarine</text><text x="630" y="150" fill="#0a171d" class="rd-sw-hex">#FFBD76</text></g>
+			</svg>
+			<figcaption>The board's four colours, at their literal values. This figure does not follow the theme.</figcaption>
+		</figure>
+		<p>A board like this is a <em>mood</em>, not a system. It says nothing about what a disabled label looks like, which colour a link is, or how a chart tells six series apart. Getting from one to the other is the work.</p>
+	</section>
+
+	<section id="read-roles" aria-labelledby="read-roles-h">
+		<h3 id="read-roles-h">Roles, not colours</h3>
+		<p>An RT Coat theme never paints a component. It moves <strong>roles</strong>: the ground, the card, the text, the action, the mark. Every component asks for a role, so a theme that sets about a hundred of them reaches every button, badge and chart without naming one.</p>
+		<figure class="rd-diagram">
+			<svg viewBox="0 0 860 150" role="img" aria-label="A flow: the mood board feeds the roles, the roles are assembled into theme.css, and any shell wears theme.css">
+				<defs><marker id="read-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="rd-arrowhead"/></marker></defs>
+				<g class="rd-node"><rect x="10" y="40" width="170" height="70" rx="12"/><text x="95" y="72">Mood board</text><text x="95" y="94" class="rd-node-sub">4 colours</text></g>
+				<g class="rd-node rd-node-key"><rect x="236" y="40" width="170" height="70" rx="12"/><text x="321" y="72">Roles</text><text x="321" y="94" class="rd-node-sub">about 100, 2 modes</text></g>
+				<g class="rd-node"><rect x="462" y="40" width="170" height="70" rx="12"/><text x="547" y="72">theme.css</text><text x="547" y="94" class="rd-node-sub">assembled</text></g>
+				<g class="rd-node rd-node-mark"><rect x="688" y="40" width="162" height="70" rx="12"/><text x="769" y="72">Any shell</text><text x="769" y="94" class="rd-node-sub">wears it</text></g>
+				<path class="rd-edge" d="M184 75 H232" marker-end="url(#read-arrow)"/>
+				<path class="rd-edge" d="M410 75 H458" marker-end="url(#read-arrow)"/>
+				<path class="rd-edge" d="M636 75 H684" marker-end="url(#read-arrow)"/>
+			</svg>
+			<figcaption>The path every theme takes. Only the first box changes from theme to theme.</figcaption>
+		</figure>
+		<p>For Coast the mapping came down to one table:</p>
+		<div class="rt-table-container">
+			<table class="rt-table">
+				<caption>Where each colour of the board lands</caption>
+				<thead><tr><th>Colour</th><th>By day</th><th>At night</th></tr></thead>
+				<tbody>
+					<tr><td><b>Onyx</b></td><td>text, the ribbon, dark surfaces</td><td>the ground and the cards</td></tr>
+					<tr><td><b>Wheat</b></td><td>the ground and the wells</td><td>text</td></tr>
+					<tr><td><b>Oceanic</b></td><td>the action, with white ink</td><td>the mark, lifted</td></tr>
+					<tr><td><b>Nectarine</b></td><td>the mark, with Onyx ink</td><td>the action, with Onyx ink</td></tr>
+				</tbody>
+			</table>
+		</div>
+	</section>
+
+	<section id="read-numbers" aria-labelledby="read-numbers-h">
+		<h3 id="read-numbers-h">The numbers decide</h3>
+		<p>Taste picks the mapping; contrast checks it. Every pair of ink and fill the library uses is measured in both modes, and a theme ships only when none falls under its floor: <mark>4.5:1 for text</mark>, 3:1 for large text and edges.</p>
+		<div class="rt-table-container">
+			<table class="rt-table">
+				<caption>Contrast of the pairs that carry text</caption>
+				<thead><tr><th>Ink on fill</th><th data-align="end">Ratio</th><th>Verdict</th></tr></thead>
+				<tbody>
+					<tr><td>Onyx on Wheat</td><td data-align="end"><code>17.0:1</code></td><td><span class="rt-badge" data-variant="secondary">body text</span></td></tr>
+					<tr><td>White on Oceanic</td><td data-align="end"><code>11.7:1</code></td><td><span class="rt-badge" data-variant="secondary">action</span></td></tr>
+					<tr><td>Onyx on Nectarine</td><td data-align="end"><code>11.1:1</code></td><td><span class="rt-badge" data-variant="secondary">mark</span></td></tr>
+					<tr><td>Nectarine on Wheat</td><td data-align="end"><code>1.5:1</code></td><td><span class="rt-badge" data-variant="destructive">never as text</span></td></tr>
+				</tbody>
+			</table>
+		</div>
+		<rt-chart id="read-contrast" type="bar" label="Contrast of the four pairs, against the 4.5:1 floor"
+			data='{"labels":["Onyx on Wheat","White on Oceanic","Onyx on Nectarine","Nectarine on Wheat"],"series":[{"name":"Ratio","values":[17.0,11.7,11.1,1.5]},{"name":"Floor","values":[4.5,4.5,4.5,4.5]}]}'></rt-chart>
+		<div class="rt-alert" data-variant="destructive" role="note">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+			<h2>One pair is out</h2>
+			<section><p>Nectarine on Wheat measures 1.5:1. By day Nectarine is therefore only ever a filled shape with dark ink on it, never a thin line or a word on the page.</p></section>
+		</div>
+	</section>
+
+	<blockquote class="rd-pull">
+		<p>A mood board says how a thing should feel. The contrast table says whether anyone can read it.</p>
+	</blockquote>
+
+	<section id="read-night" aria-labelledby="read-night-h">
+		<h3 id="read-night-h">Night is not inverted day</h3>
+		<p>Swapping light for dark is the obvious first move, and it fails in a specific way: Oceanic, the colour that did all the work by day, all but vanishes on Onyx. So at night the two accents trade places. Nectarine becomes the action, and Oceanic, lifted to a sea glass, becomes the mark and the first chart series.</p>
+		<figure class="rd-pair">
+			<svg viewBox="0 0 420 240" role="img" aria-label="A miniature screen by day: Wheat ground, an Onyx ribbon, an Oceanic button">
+				<rect width="420" height="240" rx="14" fill="#f3ebdf"/><rect width="44" height="240" rx="14" fill="#0a171d"/><rect x="62" y="20" width="340" height="200" rx="12" fill="#fffbf5"/>
+				<rect x="82" y="44" width="160" height="14" rx="7" fill="#0a171d"/><rect x="82" y="70" width="260" height="9" rx="4.5" fill="#0a171d" opacity=".35"/><rect x="82" y="88" width="220" height="9" rx="4.5" fill="#0a171d" opacity=".35"/>
+				<rect x="82" y="176" width="96" height="28" rx="14" fill="#003f47"/><rect x="190" y="176" width="70" height="28" rx="14" fill="#ffbd76"/>
+			</svg>
+			<svg viewBox="0 0 420 240" role="img" aria-label="The same screen at night: Onyx ground, Wheat text, a Nectarine button">
+				<rect width="420" height="240" rx="14" fill="#081318"/><rect width="44" height="240" rx="14" fill="#060d10"/><rect x="62" y="20" width="340" height="200" rx="12" fill="#162328"/>
+				<rect x="82" y="44" width="160" height="14" rx="7" fill="#fff6e9"/><rect x="82" y="70" width="260" height="9" rx="4.5" fill="#fff6e9" opacity=".4"/><rect x="82" y="88" width="220" height="9" rx="4.5" fill="#fff6e9" opacity=".4"/>
+				<rect x="82" y="176" width="96" height="28" rx="14" fill="#ffbd76"/><rect x="190" y="176" width="70" height="28" rx="14" fill="#2a8a95"/>
+			</svg>
+			<figcaption>Day and night side by side, at Coast's literal values: the action moves from Oceanic to Nectarine.</figcaption>
+		</figure>
+	</section>
+
+	<section id="read-try" aria-labelledby="read-try-h">
+		<h3 id="read-try-h">Try it</h3>
+		<p>Coast ships with RT Coat like every other theme. In this Workspace, open <b>Settings</b> in the ribbon, or press <kbd class="rt-kbd-group"><kbd class="rt-kbd">Ctrl</kbd><kbd class="rt-kbd">K</kbd></kbd> and type <q>theme</q>. To make it a Workspace's default:</p>
+		<ol>
+			<li>Create the Workspace with it: <code>rt init --theme coast my-app</code>.</li>
+			<li>Then check its contrast with the rt-ui skill every Workspace carries:</li>
+		</ol>
+		<div class="rt-code" data-ignore-morph data-code="'sh'"><template>cd my-app
+python3 .rt/agents/skills/rt-ui/scripts/theme-check.py .rt/web/theme.css   # contrast FAILS 0, day and night</template></div>
+		<dl class="rd-defs">
+			<dt>Role</dt><dd>A named colour job, such as <code>--primary</code> or <code>--bg-elevated</code>, that components ask for.</dd>
+			<dt>Floor</dt><dd>The least contrast a pair may have: 4.5:1 for text, 3:1 for large text and edges.</dd>
+		</dl>
+		<div class="rt-alert" role="note">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+			<h2>Any shell, any theme</h2>
+			<section><p>A theme names no component and no shell, so Coast works on Ribbon &amp; Sheet, the Showcase and Canvas alike.</p></section>
+		</div>
+	</section>
+
+	<section id="read-faq" aria-labelledby="read-faq-h">
+		<h3 id="read-faq-h">Questions</h3>
+		<div class="rt-accordion">
+			<details name="read-faq" open>
+				<summary>Why not use the board's own typeface?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+				<div>A theme may only name faces the library already hosts, so no page ever asks a third party for a font. A wide display face can join the library first, and Coast can then name it.</div>
+			</details>
+			<details name="read-faq">
+				<summary>Can a theme belong to one shell only?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+				<div>Yes: a shell may carry its own themes in <code>shells/&lt;name&gt;/themes/</code>. They are offered with that shell and nowhere else.</div>
+			</details>
+			<details name="read-faq">
+				<summary>What happens to the charts?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+				<div>They read six chart roles. Coast sets them from the board's colours and their tints, with a separate set at night.</div>
+			</details>
+		</div>
+	</section>
+
+	<hr class="rt-separator">
+
+	<footer class="rd-foot">
+		<ol class="rd-notes" aria-label="Notes">
+			<li id="read-fn-1">The board names its source in its footer: Jenny Henderson Studio. The theme borrows the four values and nothing else. <a href="#read-fn-1-ref" aria-label="Back to the text">↩</a></li>
+		</ol>
+		<a class="rt-item" data-variant="outline" href="/work">
+			<figure><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg></figure>
+			<section><h3>Next: the theme on a dashboard</h3><p>Operations: cards, charts and a table, in the same colours.</p></section>
+			<aside><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></aside>
+		</a>
+	</footer>
+</article>

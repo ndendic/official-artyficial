@@ -1,0 +1,30 @@
+{
+  "name": "ribbon-sheet",
+  "displayName": "Ribbon & Sheet",
+  "kind": "shell",
+  "version": "0.1.6",
+  "description": "The blank RT Station default Page Shell: a ribbon with Pages and Settings, a sidebar and a sheet in one tonal ramp, a Ctrl/⌘ K palette and an inspector. Only what works in a new Workspace; the AI pill and the demo panels live in ribbon-deck.",
+  "publisher": {
+    "name": "Artyficial",
+    "url": "https://github.com/ndendic/official-artyficial"
+  },
+  "repository": "https://github.com/ndendic/official-artyficial",
+  "license": "MIT",
+  "tags": [
+    "shell",
+    "ribbon",
+    "sheet",
+    "blank",
+    "default"
+  ],
+  "screenshots": [
+    ".artyficial/screenshot-day.webp",
+    ".artyficial/screenshot-night.webp"
+  ],
+  "readme": "README.md",
+  "platform": {
+    "min": "0.20.1",
+    "max_exclusive": null
+  },
+  "manifest": "manifest.json"
+}

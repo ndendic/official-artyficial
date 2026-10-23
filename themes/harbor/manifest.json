@@ -1,0 +1,32 @@
+{
+	"name": "harbor",
+	"version": "1.0.4",
+	"kind": "theme",
+	"title": "Harbor",
+	"description": "Cool and technical: blue-slate grounds, a deep blue signal with white ink, a cyan accent, an all-cool chart palette and instrument figures in the mono face.",
+	"entry": "harbor.css",
+	"preview": null,
+	"datastart": {
+		"min": "0.20.1"
+	},
+	"modes": [
+		"day",
+		"night"
+	],
+	"faces": [
+		"Albert Sans",
+		"Big Shoulders Display",
+		"JetBrains Mono"
+	],
+	"license": "MIT",
+	"files": {
+		".artyficial/extension.json": "sha256:2f2f7b44ba1638b931cf0f648e1d2a928bd7b37ea89b5a82110691f806300297",
+		".artyficial/screenshot-day.webp": "sha256:c8fc390728102b780c069a564f690f77dec03dc2d6d2f2e00cfff0d7b78de1ed",
+		".artyficial/screenshot-night.webp": "sha256:9a869de820515f0fabaf5a18da41abce503efe827e498b880a7752fbce019067",
+		"LICENSE": "sha256:b23a1e727268b4e1da945af882c0e6a86cf056c3f68ff86527c0bfdb65aecf89",
+		"README.md": "sha256:66adc02bdc40f03fca5959da2a961501f06dbafe1256dbc0d77a0c82201f791d",
+		"harbor.css": "sha256:d40891a1ea99130e16c78bd1b696e439666ef810f9b430d320ef6909159f6152",
+		"harbor.default.css": "sha256:081a3a4da65bc9b4e09fe09b3a55dc5879ea6e471f0f2cfe80d69f6ef762f812",
+		"harbor.src.css": "sha256:87569cb262798f314f6824f5eb3ac10e670dee18bf43c04020d0752d0b128d48"
+	}
+}

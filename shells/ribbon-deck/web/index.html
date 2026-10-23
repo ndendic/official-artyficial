@@ -1,0 +1,1364 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>{{if ne .Title .SiteTitle}}{{.Title}} — {{end}}{{.SiteTitle}}</title>
+		<!-- the favicon: RT Coat's brand SVG (light and dark in one file) with a
+		     PNG fallback, at immutable URLs; {{"{{"}}.UI.Icons}} writes the links -->
+		{{.UI.Icons}}
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1"/>
+		<!-- the import map must precede every module script: it maps the bare
+		     "datastar" specifier the library and the plugins import to the
+		     engine, so the page, the library and every plugin share ONE Datastar
+		     instance. The binary writes it: DATASTAR_SRC picks the engine
+		     (embedded, the default: the pinned bundle served by the binary, so
+		     the page makes no third-party request for it; cdn: the same file
+		     from jsDelivr with its SRI hash; or a URL of your own). -->
+		{{.UI.ImportMap}}
+		<!-- expression helpers must exist before Datastar's first scan: classic script, no defer -->
+		<script src="/app/plugins/fold.js"></script>
+		<!-- THE FIRST MODULE SCRIPT: the UI library the binary serves under
+		     /static/ui/v<version>/ (immutable: the version is the cache key).
+		     Its byo-datastar/ loader carries no engine: it imports "datastar"
+		     through the import map, so the engine and every eager component
+		     evaluate in one module graph, before Datastar's first apply; every
+		     other rt-* element is autoloaded on first sight, server patches
+		     included. .UI.Library writes modulepreload links for the loader,
+		     the components this shell uses on every page and the engine (so
+		     they download beside the CSS), then the module script. -->
+		{{.UI.Library}}
+		<!-- Datastar v1.0.4 + Rocket (MIT). The same URL the import map resolves,
+		     so the same instance: already evaluated by the line above, kept for
+		     pages that drop the library. -->
+		{{.UI.Script}}
+		<!-- workspace plugin set (data-on-keys, data-persist, data-resize,
+		     data-scroll, data-anchor, data-draggable, data-split, data-canvas,
+		     data-observe-resize, data-resize-pane, data-snap-drag, data-code,
+		     data-toast, data-demo, data-chart, data-theme-switch): each plugin
+		     file is loaded the first time its attribute is on the page — see
+		     plugins/index.js and plugins/LICENSES.md. data-chart is opt-in and
+		     loads ApexCharts itself (rt-chart, the library's own, needs nothing). -->
+		<script type="module" src="/app/plugins/index.js"></script>
+		<!-- The UA's own canvas, form controls and scrollbars, before ANY CSS has
+		     loaded. Without it the canvas is white until body is parsed and styled
+		     (base/tokens.css paints `background` on BODY), so a dark theme on a slow
+		     connection shows a white page first. Zero JavaScript, and it is the only
+		     part of the no-flash story that survives JS being off. -->
+		<meta name="color-scheme" content="light dark">
+		<script>
+		/* Personality and mode, before first paint. Classic, inline, blocking, and
+		   ABOVE every <link rel="stylesheet">: a classic script in <head> is blocked
+		   on preceding stylesheets, so placed after them the attribute lands later
+		   than it needs to. A module would be worse — deferred by definition, it
+		   would run after the paint it exists to precede.
+
+		   Everything lands on <html>, which is the element that exists in <head>.
+		   <body> does not, which is why the script at the top of <body> still
+		   exists; it MIRRORS what is decided here and never re-derives it.
+
+		   Every branch is inside one try/catch: a blocked localStorage must cost a
+		   remembered preference, never a working page. */
+		(function () {
+			var html = document.documentElement;
+			/* RT Coat: hide undefined elements until the autoloader has defined
+			   what is on the page (the loader removes it; 3 s at most) */
+			html.classList.add('rt-cloak');
+			try {
+				var q = new URLSearchParams(location.search), n = q.get('theme');
+				if (n !== null) { n ? localStorage.setItem('theme-name', n) : localStorage.removeItem('theme-name'); }
+				var name = localStorage.getItem('theme-name');
+				if (name) html.setAttribute('data-theme', name);
+
+				/* absent = system. The two keys are the console's and the admin/auth
+				   plane's; they are read together so a mode chosen on one follows to
+				   the other. plugins/theme.js writes both. */
+				var mode = localStorage.getItem('theme') || localStorage.getItem('ds-admin-theme') || 'system';
+				if (mode !== 'dark' && mode !== 'light') mode = 'system';
+				var resolved = mode === 'system'
+					? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+					: mode;
+				html.setAttribute('data-mode', mode);
+				html.setAttribute('data-mode-resolved', resolved);
+
+				/* THE LINE THAT KILLS THE LAST FLASH. The <meta> above tells the browser
+				   "this page does both", so on a dark OS it paints a DARK canvas — which
+				   is right for `system` and for `dark`, and WRONG for a user who chose
+				   light on a dark machine. They would get a dark canvas, then a light
+				   page. Setting color-scheme inline on <html> overrides the meta before
+				   the first paint and removes the case entirely. On `system` it is left
+				   unset, so the meta governs — which is what was governing anyway. */
+				if (mode !== 'system') html.style.colorScheme = mode;
+			} catch (e) { /* default personality, system mode, meta-governed canvas */ }
+		})();
+		/* the new side of a phone's drawer navigation (deck.js marks it on
+		   pageswap): the new chrome fades in over the old page and its scrim.
+		   Here, not in deck.js, because pagereveal must be heard before the
+		   first render. */
+		addEventListener('pagereveal', function (e) {
+			try {
+				if (sessionStorage.getItem('deck-drawer-nav') && e.viewTransition) {
+					var h = document.documentElement;
+					h.classList.add('deck-drawer-vt');
+					e.viewTransition.finished.finally(function () { h.classList.remove('deck-drawer-vt'); });
+				}
+				sessionStorage.removeItem('deck-drawer-nav');
+			} catch (x) {}
+		});
+		</script>
+		<!-- the UI library's ONE stylesheet, styles/rock-at-star.full.css: the design system
+		     (base · themes · normalize · patterns · components · rocket · shell ·
+		     utilities · pages), the Bento token map (--rt-* onto the Bento
+		     roles), the library in @layer rocket and the shell, built and
+		     minified, served by the binary at an immutable URL. {{"{{"}}.UI.Stylesheet}}
+		     also preloads the faces the first paint uses, so first paint has
+		     the real type and no fallback-then-swap grow. For one release it is also
+		     where styles/rock-at-star.compat.css belongs (the 0.3.0 prefix, RT Coat
+		     0.4.0): the helper knows the vendored release's URL, this shell does not. -->
+		{{.UI.Stylesheet}}
+		<!-- this workspace's theme overrides (@layer themes, yours to edit) -->
+		<link href="/app/theme.css" rel="stylesheet"/>
+		<!-- Ribbon & Sheet: the shell's own sheet (@layer shell), the shared app
+		     sheet, then the assistant pill's sheet (also @layer shell) -->
+		<link href="/app/pages/_shell.css" rel="stylesheet"/>
+		<link href="/app/plugins/pill.css" rel="stylesheet"/>
+		<!-- the shell's motion, RENDER-BLOCKING: a module runs only after the
+		     document is parsed, so blocking="render" holds the first paint (and a
+		     cross-document View Transition's new snapshot) until the whole shell
+		     is parsed and both tabs are placed. The server streams the page; without
+		     this the browser could paint mid-parse and the tab would have nothing
+		     to glide to. Cached after the first load, so the hold is a few ms. -->
+		<script type="module" blocking="render" src="/app/plugins/deck.js"></script>
+		<!-- THE PATCH REGIONS (stage.json beside this file names them; ADR 0033).
+		     Each element marked data-patch-region holds only its fills and nothing
+		     of the shell's own markup, so the stream's inner patch never wipes
+		     chrome: #rail (in the ribbon, under the sidebar icons), #navigation
+		     (under the page tree), #header (above the scroller, in the main
+		     landmark), main = the tray #main (data-stage), #aside (top of the
+		     inspector column), #footer (left of the pill on the sheet's bar),
+		     #layer (inside the sheet, above the pill; personal: never stored).
+		     The column of the inspector opens while #aside holds a Region and
+		     shows the inspector's own parts only when the reader opened it;
+		     below 900px the aside stacks under main at full width. -->
+		<!-- region rules live in /app/pages/_shell.css (@layer shell): every
+		     .shell-region:empty is display:none, so a producer's first child
+		     condenses it into place and its last removal dissolves it -->
+		<!-- this page's own arrangement (@layer pages): .rt/web/pages/<slug>.css,
+		     fenced by body[data-page="<slug>"]. {{"{{"}}.PageSheet}} links it only when
+		     the file exists, so adding a sheet needs no edit here. -->
+		{{.PageSheet}}
+		<!-- the Head Contribution (the Workspace's own head content), last so it
+		     can override anything above -->
+		{{.Head}}
+	</head>
+	<!-- data-page is the slug, stamped on <body> so a page sheet (@layer pages)
+	     can target one page without the system knowing any slug -->
+	<body data-page="{{.Slug}}">
+		<script>
+			/* PRE-PAINT A. The mode class the theme files key on, MIRRORED from the
+			   <html> attribute the head block resolved, and the pinned inspector. */
+			try {
+				const m = document.documentElement.getAttribute('data-mode-resolved');
+				if (m === 'dark' || m === 'light') document.body.classList.add('theme-' + m);
+				if (localStorage.getItem('detail') === 'open') document.body.classList.add('insp', 'insp-hand');
+			} catch {}
+		</script>
+		<!-- subscribes this document to its page's patch stream; retry 'always'
+		     reopens it at every authorization lease (about 30 s), with no click -->
+		<div id="updates" data-init="@get('{{.UpdatesURL}}', {retry: 'always', retryInterval: 400, retryMaxCount: 20})"></div>
+
+		<a class="skip" href="#main">Skip to content</a>
+
+		<!-- ═══ SURFACE 1: THE RIBBON ═══════════════════════════════════════════
+		     The deepest surface: the workspace mark, one icon per sidebar, the
+		     Patch Region rail, settings and the account. The active icon's TAB is
+		     a piece of the panel (sidebar) that runs out of the panel's edge into
+		     the ribbon: tab + two flares (inverse corners). plugins/deck.js moves
+		     it on SPRING.lens and folds it away when the sidebar collapses. -->
+		<nav class="ribbon" id="ribbon" aria-label="Sidebars">
+			<i class="ribbon-tab" id="ribbon-tab" aria-hidden="true"></i>
+			<i class="ribbon-flare" data-edge="t" aria-hidden="true"></i>
+			<i class="ribbon-flare" data-edge="b" aria-hidden="true"></i>
+			<!-- the workspace switcher: THIS workspace's menu, never invented ones -->
+			<rt-dropdown-menu id="deck-switch" side="right" align="start">
+				<button type="button" data-trigger class="ribbon-mark" aria-label="Workspace menu: {{.SiteTitle}}" data-tooltip="{{.SiteTitle}}" data-side="right">
+					<i class="shell-mark" aria-hidden="true">{{printf "%.1s" .SiteTitle}}</i>
+				</button>
+				<div role="menu" aria-label="Workspace">
+					<div role="group" aria-labelledby="deck-sw-h"><div role="heading" id="deck-sw-h">{{.SiteTitle}}</div></div>
+					<a role="menuitem" href="/">Workspace home</a>
+					<button type="button" role="menuitem" value="palette">Search pages and actions<kbd class="rt-kbd" data-shell-mod>⌘K</kbd></button>
+					<button type="button" role="menuitem" value="copy">Copy page URL</button>
+					{{if .Identity.Superuser}}<hr role="separator">
+					<a role="menuitem" href="/admin/overview">Admin console</a>
+					<a role="menuitem" href="/admin/settings/application">Settings</a>{{end}}
+				</div>
+			</rt-dropdown-menu>
+			<!-- one icon per sidebar: a roving tab stop (↑ ↓ Home End), Alt+1…4 from anywhere -->
+			<div class="ribbon-set" role="group" aria-label="Sidebars">
+				<button type="button" class="ribbon-btn" data-panel="pages" aria-controls="panel-pages" aria-expanded="false" aria-keyshortcuts="Alt+1" aria-label="Pages" data-tooltip="Pages  Alt 1" data-side="right">
+					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg>
+				</button>
+				<button type="button" class="ribbon-btn" data-panel="inbox" aria-controls="panel-inbox" aria-expanded="false" aria-keyshortcuts="Alt+2" aria-label="Inbox, 2 unread" data-tooltip="Inbox  Alt 2" data-side="right">
+					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+					<i class="ribbon-badge" aria-hidden="true"></i>
+				</button>
+				<button type="button" class="ribbon-btn" data-panel="data" aria-controls="panel-data" aria-expanded="false" aria-keyshortcuts="Alt+3" aria-label="Data" data-tooltip="Data  Alt 3" data-side="right">
+					<svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
+					</button>
+					<!-- AGENTS: the herdr sessions (the herdr console Plugin fills the panel).
+					     Shown only while #pill[data-agent] names the Plugin (the end-of-body
+					     script hides it otherwise). The icon is a generic agent glyph drawn
+					     for this shell, stroked like the other ribbon icons. The badge mirrors
+					     $herdrBadge ("blocked" red, "done" blue; plugins/pill.js paints it). -->
+					<button type="button" class="ribbon-btn ribbon-agents" data-panel="agents" aria-controls="panel-agents" aria-expanded="false" aria-keyshortcuts="Alt+5" aria-label="Agents" data-tooltip="Agents  Alt 5" data-side="right">
+						<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 4v4M9.5 13v2M14.5 13v2"/></svg>
+						<i class="ribbon-badge" aria-hidden="true" hidden></i>
+					</button>
+			</div>
+			<!-- the Patch Region rail: a producer's own icons, under the sidebars -->
+			<div id="rail" class="shell-region" data-patch-region="rail">{{index .PatchRegions "rail"}}</div>
+			<div class="ribbon-foot">
+				<button type="button" class="ribbon-btn" data-panel="settings" aria-controls="panel-settings" aria-expanded="false" aria-keyshortcuts="Alt+4" aria-label="Settings" data-tooltip="Settings  Alt 4" data-side="right">
+					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7h-9M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
+				</button>
+			</div>
+		</nav>
+
+		<!-- THE ROW TAB: a piece of the sheet under the current row, reaching the
+		     sheet's edge. It sits UNDER the transparent column (so the row's text
+		     is above it) and outside rt-sidebar (so it is placed before the
+		     library upgrades). Its left edge is a clip-path inset, never a width:
+		     moving between depths only moves a clip. Its two flares are children
+		     of the desk (below), so they ride the collapse. -->
+		<i class="deck-tab" id="deck-tab" aria-hidden="true"></i>
+
+		<!-- ═══ SURFACE 2: THE SIDEBAR (rt-sidebar, collapsible="icon" with a
+		     zero-width icon state: collapsed means GONE, only the ribbon stays).
+		     One panel per ribbon icon; only the active one is shown. -->
+		<rt-sidebar id="shell-sidebar" collapsible="icon" breakpoint="768" data-collapsible="icon" data-side="left" data-state="expanded">
+			<nav id="region-nav" aria-label="Workspace" data-panel="pages">
+				<!-- THE WORKSPACE SWITCHER (concept-dashboard's), shared by every panel.
+				     The mark is the ribbon's: mark → name read as one row across the
+				     ribbon/panel cut. It opens the same workspace menu. -->
+				<header class="deck-ws">
+					<button type="button" class="shell-brand" data-open-menu="deck-switch" aria-haspopup="menu" aria-label="Workspace menu: {{.SiteTitle}}">
+						<span><b>{{.SiteTitle}}</b><small>workspace</small></span>
+						<svg class="deck-updown" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+					</button>
+				</header>
+				<div class="panels">
+					<!-- PAGES: the page tree (server-rendered, regrouped before first paint) -->
+					<section class="panel" id="panel-pages" data-panel="pages" aria-labelledby="panel-pages-h">
+						<header class="panel-head"><h2 id="panel-pages-h">Pages</h2><small id="panel-pages-sub"></small></header>
+						<section id="shell-tree" class="panel-scroll">
+							<div role="group" aria-labelledby="shell-g-ws">
+								<h3 id="shell-g-ws" class="sr-only">Pages</h3>
+								<!-- every page, server-rendered, so navigation works with no script;
+								     script B regroups it into the tree before first paint -->
+								<ul id="page-list">
+									{{if not .Pages}}<li><span class="shell-none">none yet</span></li>{{end}}
+									{{range .Pages}}<li><a href="/{{.Slug}}"{{if eq .Slug $.Slug}} aria-current="page"{{end}}><span>{{if .Title}}{{.Title}}{{else}}{{.Slug}}{{end}}</span></a></li>
+									{{end}}
+								</ul>
+							</div>
+							{{if .Identity.Superuser}}<div role="group" aria-labelledby="shell-g-admin">
+								<h3 id="shell-g-admin">Admin</h3>
+								<ul>
+									<li><a href="/admin/overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg><span>Admin console</span></a></li>
+									<li><a href="/admin/settings/application"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg><span>Settings</span></a></li>
+								</ul>
+							</div>{{end}}
+							<!-- the Patch Region navigation: links a producer pins under the tree -->
+							<div role="group" class="deck-pinned">
+								<div id="navigation" class="shell-region" data-patch-region="navigation">{{index .PatchRegions "navigation"}}</div>
+							</div>
+						</section>
+					</section>
+
+					<!-- INBOX: what agents and the store asked of you (demo, local) -->
+					<section class="panel" id="panel-inbox" data-panel="inbox" aria-labelledby="panel-inbox-h">
+						<header class="panel-head"><h2 id="panel-inbox-h">Inbox</h2><small>2 unread</small></header>
+						<div class="panel-scroll">
+							<div role="group" aria-label="Today">
+								<h3>Today</h3>
+								<ul class="inbox-list">
+									<li><a href="/work" data-unread><i class="inbox-who" data-tone="agent" aria-hidden="true">A</i><span><b>Arty summarised the week</b><small>Revenue up 21% on the online store</small></span><time>2m</time></a></li>
+									<li><a href="/work-orders" data-unread><i class="inbox-who" data-tone="warn" aria-hidden="true">!</i><span><b>Order #3118 refunded</b><small>Marketplace · $480.39</small></span><time>18m</time></a></li>
+									<li><a href="/work-customers"><i class="inbox-who" aria-hidden="true">L</i><span><b>Loom flagged 3 customers</b><small>No order in 60 days</small></span><time>1h</time></a></li>
+								</ul>
+							</div>
+							<div role="group" aria-label="Earlier">
+								<h3>Earlier</h3>
+								<ul class="inbox-list">
+									<li><a href="/home"><i class="inbox-who" data-tone="agent" aria-hidden="true">A</i><span><b>Shell template merged</b><small>Ribbon, sidebar and sheet are one object</small></span><time>Mon</time></a></li>
+								</ul>
+							</div>
+						</div>
+					</section>
+
+					<!-- DATA: the workspace's bases; a base with a page is a row the tab can land on -->
+					<section class="panel" id="panel-data" data-panel="data" aria-labelledby="panel-data-h">
+						<header class="panel-head"><h2 id="panel-data-h">Data</h2><small>4 bases</small></header>
+						<div class="panel-scroll">
+							<div role="group" aria-label="Bases">
+								<h3>Bases</h3>
+								<ul class="data-list">
+									<li><a href="/work-customers"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0"/><path d="M16 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-4-6.3"/></svg><span>customers</span><small>1,284</small></a></li>
+									<li><a href="/work-orders"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg><span>orders</span><small>4,596</small></a></li>
+									<li><a href="/work"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg><span>metrics</span><small>30 days</small></a></li>
+									<li><span class="data-row" aria-disabled="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8 12 3 3 8l9 5z"/><path d="m3 13 9 5 9-5"/></svg><span>products</span><i class="data-tag">no page</i></span></li>
+								</ul>
+							</div>
+							<div role="group" aria-label="Views">
+								<h3>Views</h3>
+								<ul class="data-list">
+									<li><a href="/work-orders"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M7 12h10M10 18h4"/></svg><span>Pending orders</span><small>12</small></a></li>
+									<li><a href="/work-customers"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M7 12h10M10 18h4"/></svg><span>Lapsed customers</span><small>3</small></a></li>
+								</ul>
+							</div>
+							<p class="panel-note">Bases are RT Station's record collections. Rows here are demo counts; a base with a page opens it.</p>
+						</div>
+					</section>
+
+					<!-- AGENTS: the herdr sessions, grouped by herdr workspace. The body is
+					     the PERSONAL Patch Region agents (element #agents-panel): the Plugin
+					     named by #pill[data-agent] fills it with Caller patches (find, New,
+					     the rows) when the panel opens (action "agents") and re-renders it on
+					     herdr status events. plugins/pill.js turns its [data-pill-call]
+					     controls into capability calls, filters its rows (the Find field)
+					     and counts them into the head. -->
+					<section class="panel" id="panel-agents" data-panel="agents" aria-labelledby="panel-agents-h">
+						<header class="panel-head"><h2 id="panel-agents-h">Agents</h2><small id="panel-agents-sub"></small></header>
+						<div class="panel-scroll agents-scroll">
+							<div id="agents-panel" class="shell-region" data-patch-region="agents">{{index .PatchRegions "agents"}}</div>
+							<p class="panel-note agents-wait" id="agents-wait">Loading your sessions…</p>
+							<div class="ha-error" id="agents-error" role="alert" hidden><span></span><button type="button" data-agents-retry>Retry</button></div>
+						</div>
+					</section>
+
+					<!-- SETTINGS: appearance and the account, one tap from anywhere -->
+					<section class="panel" id="panel-settings" data-panel="settings" aria-labelledby="panel-settings-h">
+						<header class="panel-head"><h2 id="panel-settings-h">Settings</h2></header>
+						<div class="panel-scroll">
+							<div role="group" aria-labelledby="set-mode-h">
+								<h3 id="set-mode-h">Mode</h3>
+								<div class="set-seg" role="radiogroup" aria-labelledby="set-mode-h">
+									<button type="button" role="radio" aria-checked="false" data-theme-set="mode:light"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>Light</button>
+									<button type="button" role="radio" aria-checked="false" data-theme-set="mode:dark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>Dark</button>
+									<button type="button" role="radio" aria-checked="false" data-theme-set="mode:system"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>System</button>
+								</div>
+							</div>
+							<div role="group" aria-labelledby="set-p-h">
+								<h3 id="set-p-h">Personality</h3>
+								<ul class="set-list" role="radiogroup" aria-labelledby="set-p-h">
+									<li><button type="button" role="radio" aria-checked="false" data-theme-set="personality:"><i class="set-swatch" data-p="bento" aria-hidden="true"></i><span>Bento<small>the default · neutral</small></span></button></li>
+									<li><button type="button" role="radio" aria-checked="false" data-theme-set="personality:harbor"><i class="set-swatch" data-p="harbor" aria-hidden="true"></i><span>Harbor<small>cool and technical</small></span></button></li>
+									<li><button type="button" role="radio" aria-checked="false" data-theme-set="personality:folio"><i class="set-swatch" data-p="folio" aria-hidden="true"></i><span>Folio<small>editorial · paper and ink</small></span></button></li>
+								</ul>
+							</div>
+							<div role="group" aria-labelledby="set-acct-h">
+								<h3 id="set-acct-h">Account</h3>
+								<div class="set-who">
+									<span class="rt-avatar" data-size="sm"><span>{{if .Identity.Authenticated}}{{if .Identity.Email}}{{printf "%.1s" .Identity.Email}}{{else if .Identity.UserID}}{{printf "%.1s" .Identity.UserID}}{{else}}·{{end}}{{else}}?{{end}}</span></span>
+									<span><b>{{if .Identity.Authenticated}}{{if .Identity.Email}}{{.Identity.Email}}{{else}}{{.Identity.UserID}}{{end}}{{else}}Anonymous{{end}}</b><small>{{if .Identity.Authenticated}}signed in{{if .Identity.Superuser}} · administrator{{end}}{{else}}reading only{{end}}</small></span>
+								</div>
+								<ul class="set-list">
+									{{if .Identity.Authenticated}}
+									<li><button type="button" data-signout><span>Sign out</span></button></li>
+									{{else}}
+									<li><a href="/auth/sign-in?return_to=/{{.Slug}}"><span>Sign in</span></a></li>
+									{{end}}
+								</ul>
+							</div>
+							<div role="group" aria-labelledby="set-keys-h">
+								<h3 id="set-keys-h">Keys</h3>
+								<ul class="set-keys">
+									<li><kbd class="rt-kbd" data-shell-mod>⌘B</kbd><span>Fold the sidebar</span></li>
+									<li><kbd class="rt-kbd" data-shell-mod>⌘K</kbd><span>Search pages and actions</span></li>
+									<li><kbd class="rt-kbd">/</kbd><span>Ask the assistant</span></li>
+									<li><kbd class="rt-kbd">Alt 1–5</kbd><span>Switch sidebars</span></li>
+								</ul>
+							</div>
+						</div>
+					</section>
+				</div>
+				<!-- THE ACCOUNT CARD (concept-dashboard's): shared by every panel, at the
+				     column's foot; its menu opens above it -->
+				<footer class="deck-foot" data-keep-mobile-sidebar-open>
+					<rt-dropdown-menu id="shell-account" side="top" align="start">
+						<button type="button" data-trigger class="shell-account" aria-label="Account menu">
+							{{if .Identity.Authenticated}}<span class="rt-avatar" data-size="sm"><span>{{if .Identity.Email}}{{printf "%.1s" .Identity.Email}}{{else if .Identity.UserID}}{{printf "%.1s" .Identity.UserID}}{{else}}·{{end}}</span></span>
+							<span><b>{{if .Identity.Email}}{{.Identity.Email}}{{else}}{{.Identity.UserID}}{{end}}</b><small>signed in{{if .Identity.Superuser}} · administrator{{end}}</small></span>
+							{{else}}<span class="rt-avatar" data-size="sm"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span></span>
+							<span><b>Anonymous</b><small>reading only</small></span>{{end}}
+							<svg class="deck-updown" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+						</button>
+						<div role="menu" aria-label="Account">
+						<div role="group" aria-labelledby="shell-acct-who">
+							<div role="heading" id="shell-acct-who">{{if .Identity.Authenticated}}{{if .Identity.Email}}{{.Identity.Email}}{{else}}{{.Identity.UserID}}{{end}}{{else}}Anonymous, reading only{{end}}</div>
+						</div>
+						<hr role="separator">
+						<button type="button" role="menuitem" value="settings">Appearance and account<kbd class="rt-kbd">Alt 4</kbd></button>
+						{{if .Identity.Authenticated}}
+						{{if .Identity.Superuser}}<a role="menuitem" href="/admin/overview">Admin console</a>{{end}}
+						<hr role="separator">
+						<button type="button" role="menuitem" value="signout" data-variant="destructive">Sign out</button>
+						{{else}}
+						<a role="menuitem" href="/auth/sign-in?return_to=/{{.Slug}}">Sign in</a>
+						{{end}}
+					</div>
+					</rt-dropdown-menu>
+				</footer>
+				<!-- PRE-PAINT B. Inside nav and LAST: it runs before first paint, after
+				     the markup it reads. It restores the sidebar state and the active
+				     panel, builds the tree and puts both tabs in place, so nothing
+				     animates on load. -->
+				<script>
+				(function () {
+					var sb = document.getElementById('shell-sidebar');
+					var nav = document.getElementById('region-nav');
+					var ribbon = document.getElementById('ribbon');
+					try {
+						var st = localStorage.getItem('shell-sidebar');
+						if (st === 'collapsed' || st === 'expanded') { sb.setAttribute('state', st); sb.setAttribute('data-state', st); }
+					} catch (e) {}
+					var mac = /Mac|iPhone|iPad/.test(navigator.platform);
+					if (!mac) for (var k of document.querySelectorAll('[data-shell-mod]')) k.textContent = k.textContent.replace('⌘', 'Ctrl ');
+
+					/* the active panel, remembered */
+					/* Alt+n opens PANELS[n-1]; ORDER is the ribbon's own top-to-bottom
+					   order (a swap's direction). Agents is Alt+5 and sits after Data */
+					var PANELS = ['pages', 'inbox', 'data', 'settings', 'agents'];
+					var ORDER = ['pages', 'inbox', 'data', 'agents', 'settings'];
+					var panel = 'pages';
+					try { var pp = localStorage.getItem('deck-panel'); if (PANELS.indexOf(pp) >= 0) panel = pp; } catch (e) {}
+					function showPanel(name) {
+						nav.setAttribute('data-panel', name);
+						for (var s of nav.querySelectorAll('.panel')) s.toggleAttribute('data-active', s.getAttribute('data-panel') === name);
+						var open = sb.getAttribute('data-state') !== 'collapsed';
+						for (var b of ribbon.querySelectorAll('.ribbon-btn')) {
+							var on = b.getAttribute('data-panel') === name;
+							b.toggleAttribute('data-active', on);
+							b.setAttribute('aria-expanded', String(on && open));
+							b.tabIndex = on ? 0 : -1;
+						}
+					}
+					showPanel(panel);
+
+					/* the page model: the tree, the breadcrumb and the palette all read
+					   it. A page's group is derived from its SLUG prefix: groupOf() is the
+					   ONLY place that rule is written down. */
+					var current = "{{.Slug}}";
+					var NS = 'http://www.w3.org/2000/svg';
+					var ICON = {
+						house: '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .7-1.5l7-6a2 2 0 0 1 2.6 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+						work: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+						templates: '<rect width="18" height="7" x="3" y="3" rx="1"/><rect width="9" height="7" x="3" y="14" rx="1"/><rect width="5" height="7" x="16" y="14" rx="1"/>',
+						ui: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M8 14h8"/>',
+						design: '<path d="m12 3 9 4.5-9 4.5-9-4.5z"/><path d="m3 16.5 9 4.5 9-4.5"/><path d="m3 12 9 4.5L21 12"/>',
+						pages: '<path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/>',
+						file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>',
+						chevron: '<path d="m6 9 6 6 6-6"/>'
+					};
+					function svg(name) {
+						var s = document.createElementNS(NS, 'svg');
+						s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('fill', 'none'); s.setAttribute('stroke', 'currentColor');
+						s.setAttribute('stroke-width', '2'); s.setAttribute('stroke-linecap', 'round'); s.setAttribute('stroke-linejoin', 'round');
+						s.setAttribute('aria-hidden', 'true'); s.innerHTML = ICON[name]; return s;
+					}
+					function el(tag, attrs, kids) {
+						var n = document.createElement(tag);
+						for (var a in attrs || {}) if (attrs[a] != null && attrs[a] !== false) n.setAttribute(a, attrs[a] === true ? '' : attrs[a]);
+						for (var c of kids || []) if (c != null) n.append(c);
+						return n;
+					}
+					var GROUPS = [['home', 'Home', 'house'], ['work', 'Operations', 'work'], ['templates', 'Templates', 'templates'],
+						['ui', 'UI', 'ui'], ['design', 'Design system', 'design'], ['pages', 'Pages', 'pages']];
+					var LANDING = { work: 'work', ui: 'ui', design: 'docs' };
+					function groupOf(slug) {
+						if (slug === 'home') return 'home';
+						if (slug === 'work' || slug.startsWith('work-')) return 'work';
+						if (slug.startsWith('t-')) return 'templates';
+						if (slug === 'ui' || slug.startsWith('ui-')) return 'ui';
+						if (slug === 'docs' || slug.startsWith('docs-')) return 'design';
+						return 'pages';
+					}
+					var byslug = function (a, b) { return a.slug < b.slug ? -1 : a.slug > b.slug ? 1 : 0; };
+					var all = [];
+					function setPages(list) {
+						all = (list || []).map(function (p) { return { slug: p.slug, title: p.title || p.slug }; }).sort(byslug);
+						return keyOf();
+					}
+					function keyOf() { return JSON.stringify(all.map(function (p) { return [p.slug, p.title]; })); }
+					function model() {
+						var out = [];
+						for (var g of GROUPS) {
+							var key = g[0];
+							var list = all.filter(function (p) { return groupOf(p.slug) === key; });
+							if (!list.length) continue;
+							var landing = LANDING[key] ? list.find(function (p) { return p.slug === LANDING[key]; }) || null : null;
+							out.push({ key: key, label: g[1], icon: g[2], pages: list, landing: landing });
+						}
+						return out;
+					}
+					/* where the current page sits: [group model, run label | null, siblings] */
+					function locate(slug) {
+						for (var g of model()) {
+							if (!g.pages.some(function (p) { return p.slug === slug; })) continue;
+							return { group: g, run: null, siblings: g.pages };
+						}
+						return null;
+					}
+					function readOpen() { try { return new Set(JSON.parse(localStorage.getItem('shell-open') || '[]')); } catch (e) { return new Set(); } }
+					function link(p, icon, label) {
+						return el('a', { href: '/' + p.slug, 'aria-current': p.slug === current ? 'page' : null },
+							[icon ? svg(icon) : null, el('span', null, [label || p.title])]);
+					}
+					function fold(key, label, icon, count, here, open, kids) {
+						var isOpen = here || open.has(key);
+						return el('details', { 'data-shell-group': key, open: isOpen, 'data-shell-auto': isOpen },
+							[el('summary', null, [icon ? svg(icon) : null, el('span', null, [label]), el('span', { 'data-badge': true }, [String(count)])]),
+							 el('ul', null, kids)]);
+					}
+					function hasCurrent(list) { return list.some(function (p) { return p.slug === current; }); }
+					function renderTree(ul) {
+						var open = readOpen();
+						var rows = model().map(function (g) {
+							if (g.key === 'home') {
+								var home = g.pages.find(function (p) { return p.slug === 'home'; }) || g.pages[0];
+								var a = link(home, 'house', 'Home'); a.setAttribute('data-shell-group', 'home');
+								return el('li', null, [a]);
+							}
+							var kids = [];
+							for (var p of g.pages) kids.push(el('li', null, [link(p, null, g.landing === p ? 'Overview' : null)]));
+							return el('li', null, [fold(g.key, g.label, g.icon, g.pages.length, hasCurrent(g.pages), open, kids)]);
+						});
+						if (!rows.length) rows = [el('li', null, [el('span', { class: 'shell-none' }, ['none yet'])])];
+						ul.replaceChildren.apply(ul, rows);
+						var sub = document.getElementById('panel-pages-sub');
+						if (sub) sub.textContent = all.length + (all.length === 1 ? ' page' : ' pages');
+						var sbn = document.getElementById('shell-sidebar');
+						if (sbn && typeof sbn.refresh === 'function') sbn.refresh();
+					}
+					/* the other panels' rows that open a page carry the same aria-current */
+					function markPanels() {
+						for (var a of nav.querySelectorAll('.panel:not(#panel-pages) a[href^="/"]')) {
+							if (a.closest('.inbox-list')) continue;
+							a.getAttribute('href') === '/' + current ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current');
+						}
+					}
+					/* the trail: group › sub-group (a dropdown of its sibling pages) › h1 */
+					var crumbKey = null;
+					function menu(label, pages, name) {
+						return el('rt-dropdown-menu', null, [
+							el('button', { type: 'button', class: 'rt-btn', 'data-variant': 'ghost', 'data-size': 'sm' }, [label, svg('chevron')]),
+							el('div', { role: 'menu', 'aria-label': name }, pages.map(function (p) {
+								return el('a', { role: 'menuitem', href: '/' + p.slug, 'aria-current': p.slug === current ? 'page' : null }, [p.title]);
+							}))
+						]);
+					}
+					function renderCrumbs(ol) {
+						var at = locate(current);
+						var trail = [];
+						if (at && at.group.key !== 'home' && !(at.group.landing && at.group.landing.slug === current)) {
+							var g = at.group;
+							if (g.landing) trail.push(el('a', { href: '/' + g.landing.slug }, [g.label]));
+							else if (g.pages.length > 1) trail.push(menu(g.label, g.pages, g.label + ' pages'));
+							else trail.push(el('span', null, [g.label]));
+						}
+						var key = JSON.stringify([trail.length, at && at.group.key, at && at.siblings.map(function (p) { return p.slug + p.title; })]);
+						if (key === crumbKey) return;
+						crumbKey = key;
+						var last = ol.lastElementChild;
+						while (ol.firstElementChild !== last) ol.firstElementChild.remove();
+						trail.forEach(function (t, i) {
+							ol.insertBefore(el('li', null, [t]), last);
+							if (i < trail.length - 1) ol.insertBefore(el('li', { 'aria-hidden': 'true' }), last);
+						});
+						last.hidden = trail.length > 0;
+					}
+
+					/* THE ROW TAB'S TARGET, in viewport space: the current row of the
+					   active panel (its closed group's summary when the group is closed),
+					   from the row's left edge to the column's right edge, which is the
+					   sheet's left edge. Clipped to the panel's scroller. */
+					var desktop = matchMedia('(min-width: 768px)');
+					function tabTarget(closing) {
+						if (!desktop.matches || sb.getAttribute('data-layout') === 'mobile') return null;
+						if (sb.getAttribute('data-state') === 'collapsed' && !document.body.classList.contains('deck-hold')) return null;
+						var p = nav.querySelector('.panel[data-active]');
+						var row = p && p.querySelector('.panel-scroll [aria-current="page"]');
+						if (!row) return null;
+						for (var d = row.closest('details'); d; d = d.parentElement.closest('details'))
+							if (!d.open || d === closing || d.classList.contains('deck-closing')) row = d.querySelector(':scope > summary');
+						/* where the row RESTS: take out every in-flight translate between it
+						   and the column (its own reveal, the row cascade, a panel swap's
+						   12px glide), so a target read mid-flight is still the landing */
+						var ty = 0;
+						for (var e = row; e && e !== nav; e = e.parentElement) {
+							var tr = getComputedStyle(e).translate;
+							if (tr && tr !== 'none') ty += parseFloat(tr.split(' ')[1]) || 0;
+						}
+						var r = row.getBoundingClientRect(), n = nav.getBoundingClientRect();
+						if (!r.height || !n.width) return null;
+						var sc = row.closest('.panel-scroll').getBoundingClientRect();
+						var y = r.top - ty;
+						return { x: r.left - n.left, y: y, h: r.height, w: n.width, left: n.left,
+							clipT: Math.max(0, sc.top - y), clipB: Math.max(0, y + r.height - sc.bottom), off: y + r.height <= sc.top + 2 || y >= sc.bottom - 2 };
+					}
+					/* one writer for the tab and both flares, so they never part */
+					function paintTab(t) {
+						var tab = document.getElementById('deck-tab');
+						var fl = document.querySelectorAll('.deck-flare');
+						var on = !!t && !t.off;
+						document.body.classList.toggle('deck-tab-on', on);
+						if (!t) return;
+						tab.style.left = t.left + 'px';
+						tab.style.inlineSize = t.w + 'px';
+						tab.style.blockSize = t.h + 'px';
+						tab.style.translate = '0 ' + t.y.toFixed(2) + 'px';
+						tab.style.clipPath = 'inset(' + t.clipT.toFixed(1) + 'px 0 ' + t.clipB.toFixed(1) + 'px ' + t.x.toFixed(2) + 'px round 9px 0 0 9px)';
+						var cut = t.clipT > 0.5 || t.clipB > 0.5;
+						if (fl[0]) { fl[0].style.translate = '0 ' + (t.y - 12).toFixed(2) + 'px'; fl[0].style.opacity = cut ? '0' : ''; }
+						if (fl[1]) { fl[1].style.translate = '0 ' + (t.y + t.h).toFixed(2) + 'px'; fl[1].style.opacity = cut ? '0' : ''; }
+					}
+					/* THE RIBBON TAB'S TARGET: the active icon, in ribbon space */
+					function ribbonTarget() {
+						var b = ribbon.querySelector('.ribbon-btn[data-active]');
+						if (!b) return null;
+						var r = b.getBoundingClientRect(), rr = ribbon.getBoundingClientRect();
+						return { y: r.top - rr.top, h: r.height };
+					}
+					function paintRibbon(t) {
+						var tab = document.getElementById('ribbon-tab');
+						if (!t) return;
+						tab.style.blockSize = t.h + 'px';
+						tab.style.translate = '0 ' + t.y + 'px';
+						for (var f of ribbon.querySelectorAll('.ribbon-flare')) f.style.translate = '0 ' + (f.dataset.edge === 't' ? t.y - 12 : t.y + t.h) + 'px';
+					}
+
+					var pageSet = setPages({{.Pages}} || []);
+					window.shellNav = {
+						current: current, groupOf: groupOf, model: model, locate: locate, svg: svg, el: el,
+						setPages: setPages, key: function () { return pageSet; },
+						renderTree: renderTree, renderCrumbs: renderCrumbs, markPanels: markPanels,
+						showPanel: showPanel, panels: PANELS, order: ORDER,
+						tabTarget: tabTarget, paintTab: paintTab, ribbonTarget: ribbonTarget, paintRibbon: paintRibbon
+					};
+					renderTree(document.getElementById('page-list'));
+					markPanels();
+					/* each panel keeps its scroll across pages, so the tab lands where the eye left it */
+					try { var sy = JSON.parse(sessionStorage.getItem('deck-panel-y') || '{}'); for (var s of nav.querySelectorAll('.panel-scroll')) { var pn = s.closest('.panel').dataset.panel; if (sy[pn]) s.scrollTop = sy[pn]; } } catch (e) {}
+					paintRibbon(ribbonTarget());
+				})();
+				</script>
+			</nav>
+		</rt-sidebar>
+
+		<!-- ═══ SURFACE 3: THE DESK and its SHEET. The sidebar's NEXT SIBLING
+		     (pushed by the column's width, plus the ribbon's). It holds the sheet
+		     and the inspector sheet, and it is the one element the collapse moves
+		     (by transform). identity sits here, not inside the sidebar: Datastar
+		     attributes inside an rt-* host are scoped. -->
+		<div class="shell-inset deck" data-signals="{identity: {{.IdentityJSON}}}">
+			<!-- the row tab's flares: inverse corners on the sheet's left edge -->
+			<i class="deck-flare" data-edge="t" aria-hidden="true"></i>
+			<i class="deck-flare" data-edge="b" aria-hidden="true"></i>
+			<script>
+				/* PRE-PAINT B': the tab and its flares, now that both exist. The column
+				   is laid out (display forced on desktop before the upgrade), so the
+				   first paint is already fused. */
+				try { shellNav.paintTab(shellNav.tabTarget()); } catch (e) {}
+			</script>
+			<!-- the rail edge (shadcn SidebarRail): a hit strip on the column's edge -->
+			<div class="deck-edge" aria-hidden="true" title="Toggle sidebar"></div>
+			<div class="shell-body deck-row">
+				<!-- THE SHEET: the titlebar, the header strip, the tray and the bar -->
+				<div class="sheet">
+					<header id="region-titlebar" class="shell-top">
+						<button type="button" class="rt-btn deck-trigger" data-variant="ghost" data-size="icon-sm" data-rt-sidebar-trigger="shell-sidebar"
+						        aria-label="Toggle sidebar" aria-keyshortcuts="Control+B Meta+B" data-tooltip="Toggle sidebar ⌘B" data-side="bottom" data-align="start">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path class="deck-divider" d="M9 4v16"/></svg>
+						</button>
+						<!-- no title here at rest: the page's own title line (below, in the
+						     canvas) docks into this row as the page scrolls -->
+						<span class="shell-top-fill"></span>
+						<div class="shell-actions">
+							<button type="button" class="rt-btn deck-insp-btn" data-variant="ghost" data-size="icon-sm" data-shell-inspector
+							        aria-controls="region-detail" aria-expanded="false" aria-label="Show the inspector" aria-keyshortcuts="Control+Period Meta+Period"
+							        data-tooltip="Inspector ⌘." data-side="bottom" data-align="end">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><rect class="deck-insp-fill" x="15" y="4" width="6" height="16" stroke="none" fill="currentColor"/><path d="M15 4v16"/></svg>
+							</button>
+						</div>
+					</header>
+					<!-- main: the canvas that every patch lands in -->
+					<main id="region-main" class="main">
+						<div class="canvas-scroll">
+							<!-- the veil: the titlebar's material. The canvas runs under the
+							     titlebar and the bar; this sticky strip (the titlebar's height)
+							     turns into a translucent, blurred tint of the sheet as content
+							     scrolls beneath it. No fade band, no opaque strip. -->
+							<div class="sheet-veil" aria-hidden="true"></div>
+							<!-- the Patch Region header: a banner strip pinned under the titlebar -->
+							<div id="header" class="shell-region" data-patch-region="header">{{index .PatchRegions "header"}}</div>
+							{{if and .Title (ne .Slug "home")}}
+							<!-- THE TITLE LINE: the eyebrow (the trail, or the page's own
+							     [data-page-eyebrow]) and the h1. It is sticky, and a scroll-driven
+							     animation carries the h1 up into the titlebar beside the fold
+							     trigger as the page scrolls (deck.js measures the path), the
+							     eyebrow fading on the way. The same element travels: one title. -->
+							<i class="page-mark" aria-hidden="true"></i>
+							<hgroup class="page-head">
+								<nav class="rt-breadcrumb page-eyebrow" aria-label="Breadcrumb">
+									<ol id="shell-crumbs"><li class="page-eyebrow-own"></li></ol>
+								</nav>
+								<h1 aria-current="page">{{.Title}}</h1>
+							</hgroup>
+							<script>shellNav.renderCrumbs(document.getElementById('shell-crumbs'));</script>
+							{{end}}
+							<!-- the tray #main, the element of the Patch Region main. It holds
+							     ONLY the page's regions (no whitespace); `layout` puts it on the
+							     document measure (doc / reading) inside the sheet. -->
+							<div id="main" data-stage tabindex="-1" data-patch-region="main" data-signals="{{.Signals}}" data-signals__ifmissing="{layout: ''}" data-class="{reading: $layout === 'reading', doc: $layout === 'doc'}">{{.Canvas}}</div>
+							<div class="welcome">
+								<div class="empty">
+									<h2>Nothing patched yet</h2>
+									<div class="empty-well">
+										<b>The sheet is blank.</b>
+										<span>Anything patched into <code>/{{.Slug}}</code> (from the CLI, an HTTP post or a NATS publish) lands here, live, for everyone on the page.</span>
+									</div>
+								</div>
+								<div class="tip">
+									<b>From the terminal</b>
+									<code>rt page use {{.Slug}}</code>
+									<code>rt patch elements '&lt;div id="hello" class="tile"&gt;…&lt;/div&gt;'</code>
+									<small><code>--region aside</code> opens the inspector beside the sheet.</small>
+								</div>
+							</div>
+							<!-- PRE-PAINT C: the layout class data-class would add after first paint -->
+							<script>
+								try {
+									const c = document.getElementById('main'), l = JSON.parse(c.getAttribute('data-signals') || '{}').layout;
+									if (l === 'doc' || l === 'reading') c.classList.add(l);
+									/* a landing page names its own eyebrow (the trail names a sub-page's) */
+									const own = document.querySelector('.page-eyebrow-own'), e = c.querySelector('[data-page-eyebrow]');
+									if (own) own.textContent = e ? e.textContent.trim() : {{.SiteTitle}};
+								} catch {}
+							</script>
+						</div>
+					</main>
+
+					<!-- THE BAR: the space at the sheet's foot where the pill lives. No
+					     ground, no border, no lamp: just the pill, centred. The Patch
+					     Region footer sits quietly beside it only when a producer fills
+					     it, and "Reconnect" appears only if the stream gave up. -->
+					<footer id="region-status" class="sheet-bar">
+						<div class="bar-l">
+							<!-- the Patch Region footer: the status line a producer fills -->
+							<span id="footer" class="status-item shell-region" data-patch-region="footer">{{index .PatchRegions "footer"}}</span>
+							<span class="sr-only" id="status-text" role="status"></span>
+							<button type="button" class="rt-btn" data-variant="ghost" data-size="xs" id="shell-reconnect" hidden>Offline · reconnect</button>
+						</div>
+						<div class="bar-r"></div>
+
+						<!-- THE PILL: the command centre. At rest a hairline in the bar's
+						     centre; it unfolds into a prompt with tools (level 1), and a tool
+						     or Ctrl/⌘ K grows a panel upward out of it (level 2). The palette
+						     IS the pill: Ctrl/⌘ K turns the prompt into its filter.
+						     plugins/pill.js drives it; plugins/pill.css styles it.
+						     data-agent names the capability the pill talks to (the herdr
+						     console Plugin): the mode dot becomes a session chip bound to
+						     $pillAgent, and a prompt goes to that capability instead of the
+						     local demo reply. Remove data-agent and the demo is back. -->
+						<div class="pill" id="pill" data-level="0" data-face="main" data-mode="ask" data-agent="artyficial.herdr.console" data-agent-version="1.0.0">
+							<div class="pill-zone" aria-hidden="true"></div>
+							<button type="button" class="pill-rest" id="pill-rest" aria-label="Open the assistant" aria-keyshortcuts="/" aria-expanded="false" aria-controls="pill-row">
+								<i class="pill-line" aria-hidden="true"></i>
+								<i class="pill-draft" aria-hidden="true"></i>
+								<kbd class="pill-hint" aria-hidden="true">/</kbd>
+							</button>
+							<div class="pill-bg" aria-hidden="true"><span class="pill-clip" data-side="l"><i class="pill-half"></i></span><span class="pill-clip" data-side="r"><i class="pill-half"></i></span></div>
+
+							<!-- level 2: one panel, one pane per tool (data-pane) -->
+							<div class="pill-panel" id="pill-panel" role="dialog" aria-modal="false" aria-labelledby="pill-panel-title" data-pane="">
+								<h2 class="pill-panel-title" id="pill-panel-title">Tool</h2>
+								<div class="pill-pane" data-pane="attach">
+									<button type="button" class="pill-opt" data-attach="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg><span><b>This page</b><small>/{{.Slug}} and its signals</small></span></button>
+									<button type="button" class="pill-opt" data-attach="selection"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3a2 2 0 0 0-2 2"/><path d="M19 3a2 2 0 0 1 2 2"/><path d="M21 19a2 2 0 0 1-2 2"/><path d="M5 21a2 2 0 0 1-2-2"/><path d="M9 3h1M9 21h1M14 3h1M14 21h1M3 9v1M21 9v1M3 14v1M21 14v1"/></svg><span><b>A region</b><small>the first region in #main</small></span></button>
+									<button type="button" class="pill-opt" data-attach="file"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21.4 11.6-9.2 9.2a6 6 0 0 1-8.5-8.5l8.6-8.6a4 4 0 0 1 5.7 5.7l-8.6 8.5a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg><span><b>A file</b><small>demo: nothing leaves the browser</small></span></button>
+								</div>
+								<div class="pill-pane" data-pane="mode" role="radiogroup" aria-label="Agent mode">
+									<button type="button" class="pill-opt" role="radio" aria-checked="true" data-set-mode="ask"><i class="pill-dot" data-mode="ask" aria-hidden="true"></i><span><b>Ask</b><small>answers about this workspace</small></span></button>
+									<button type="button" class="pill-opt" role="radio" aria-checked="false" data-set-mode="draft"><i class="pill-dot" data-mode="draft" aria-hidden="true"></i><span><b>Draft</b><small>writes a first version for you</small></span></button>
+									<button type="button" class="pill-opt" role="radio" aria-checked="false" data-set-mode="explain"><i class="pill-dot" data-mode="explain" aria-hidden="true"></i><span><b>Explain</b><small>walks through the current page</small></span></button>
+								</div>
+								<div class="pill-pane" data-pane="theme">
+									<div class="pill-seg" role="radiogroup" aria-label="Mode">
+										<button type="button" role="radio" aria-checked="false" data-theme-set="mode:light"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>Light</button>
+										<button type="button" role="radio" aria-checked="false" data-theme-set="mode:dark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>Dark</button>
+										<button type="button" role="radio" aria-checked="false" data-theme-set="mode:system"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>System</button>
+									</div>
+									<div class="pill-sub" role="radiogroup" aria-label="Personality">
+										<button type="button" class="pill-opt" role="radio" aria-checked="false" data-theme-set="personality:"><i class="pill-swatch" data-p="bento" aria-hidden="true"></i><span><b>Bento</b><small>the default · neutral</small></span></button>
+										<button type="button" class="pill-opt" role="radio" aria-checked="false" data-theme-set="personality:harbor"><i class="pill-swatch" data-p="harbor" aria-hidden="true"></i><span><b>Harbor</b><small>cool and technical</small></span></button>
+										<button type="button" class="pill-opt" role="radio" aria-checked="false" data-theme-set="personality:folio"><i class="pill-swatch" data-p="folio" aria-hidden="true"></i><span><b>Folio</b><small>editorial · paper and ink</small></span></button>
+									</div>
+								</div>
+								<!-- the palette: pages and the shell's actions, filtered by the prompt -->
+								<div class="pill-pane" data-pane="command">
+									<div role="listbox" id="pill-cmd-list" aria-label="Pages and actions"></div>
+									<footer class="pill-cmd-keys" aria-hidden="true"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>↵</kbd> open</span><span><kbd>Esc</kbd> back</span></footer>
+								</div>
+							</div>
+
+							<!-- level 1: a toolbar with a roving tab stop -->
+							<form class="pill-row" id="pill-row" role="toolbar" aria-label="Assistant" autocomplete="off" inert>
+								<button type="button" class="pill-chip" data-tool="attach" data-side="l" tabindex="-1" aria-haspopup="dialog" aria-expanded="false" aria-label="Attach">
+									<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="pill-label">Attach</span></button>
+								<button type="button" class="pill-chip" data-tool="mode" data-side="l" tabindex="-1" aria-haspopup="dialog" aria-expanded="false" aria-label="Agent mode: Ask">
+									<i class="pill-dot" aria-hidden="true"></i><span class="pill-label" id="pill-mode-label">Ask</span></button>
+								<!-- the session chip (only with data-agent): pill.js paints it from $pillAgent -->
+								<button type="button" class="pill-chip pill-agent" data-tool="agent" tabindex="-1" aria-haspopup="dialog" aria-controls="pill-console" aria-expanded="false" aria-label="Choose a session" hidden>
+									<span class="pill-agent-ico" aria-hidden="true"></span><span class="pill-label pill-agent-name"></span><i class="hc-dot pill-agent-dot" aria-hidden="true"></i><span class="pill-label pill-agent-hint">Sessions</span></button>
+								<button type="button" class="pill-chip" data-tool="tools" data-narrow-only tabindex="-1" aria-label="All tools" aria-pressed="false">
+									<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg><span class="pill-label">Tools</span></button>
+								<span class="pill-att" id="pill-att" hidden></span>
+								<svg class="pill-cmd-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+								<label class="pill-field" data-face-main>
+									<span class="sr-only">Prompt</span>
+									<!-- a textarea: at one line the pill is as it was; a second line turns
+									     it into the multiline layout (the text on top, the tools in a bar
+									     under it, growing upward). Enter sends, Shift+Enter is a new line -->
+									<textarea id="pill-input" name="prompt" rows="1" tabindex="0" enterkeyhint="send" spellcheck="false" placeholder="Ask anything" aria-describedby="pill-help"></textarea>
+									<span class="pill-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+								</label>
+								<kbd class="pill-esc" aria-hidden="true">Esc</kbd>
+								<span class="sr-only" id="pill-help">Enter sends, Shift+Enter starts a new line. Arrow keys move between tools. Escape closes one level. Control K searches pages and actions.</span>
+								<button type="button" class="pill-chip" data-tool="voice" data-side="r" tabindex="-1" aria-label="Voice" aria-pressed="false">
+									<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4"/></svg><span class="pill-label">Voice</span></button>
+								<button type="button" class="pill-chip" data-tool="theme" data-side="r" tabindex="-1" aria-haspopup="dialog" aria-expanded="false" aria-label="Theme">
+									<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg><span class="pill-label">Theme</span></button>
+								<button type="button" class="pill-chip" data-tool="command" data-side="r" tabindex="-1" aria-haspopup="dialog" aria-expanded="false" aria-label="Search pages and actions" aria-keyshortcuts="Control+K Meta+K">
+									<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span class="pill-label">Search <kbd data-shell-mod>⌘K</kbd></span></button>
+								<button type="submit" class="pill-send" tabindex="-1" aria-label="Send" hidden>
+									<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+							</form>
+						</div>
+					</footer>
+					<!-- the Patch Region layer: replies and notices just above the pill. The
+					     pill's own demo replies are local to this browser; a durable server
+					     patch to layer renders here after a reload like any other region -->
+					<div id="layer" class="shell-region" data-patch-region="layer" aria-live="polite">{{index .PatchRegions "layer"}}</div>
+					<!-- the Patch Region console (personal, element #pill-console): the
+					     agent console above the pill. The Plugin named by #pill[data-agent]
+					     fills it with Caller patches (its session picker, the new-session
+					     form, the conversation); pill.js turns its [data-pill-call] and
+					     [data-pill-form] controls into capability calls. Esc collapses it. -->
+					<div id="pill-console" class="shell-region pill-console" data-patch-region="console" aria-label="Agent console" aria-live="polite">{{index .PatchRegions "console"}}</div>
+				</div>
+
+				<!-- THE INSPECTOR: the sidebar's mirror on the right, on the desk tone,
+				     fused to the sheet's right edge (no gap). It opens while #aside holds
+				     a Region or a pinned answer exists, or when the reader pins it
+				     (Ctrl/⌘ .; plugins/deck.js is the one owner of body.insp). The selected pin is a piece of sheet
+				     (.pin-tab) running into the sheet, with mirrored flares. On a phone
+				     it is a bottom sheet. -->
+				<aside id="region-detail" class="detail inspector" aria-label="Inspector">
+					<i class="pin-flare pin-flare-t" aria-hidden="true"></i><i class="pin-flare pin-flare-b" aria-hidden="true"></i>
+					<div class="deck-grab" aria-hidden="true"><i></i></div>
+					<div class="detail-inner">
+						<!-- the head: the inspector's titlebar, level with the sheet's own -->
+						<div class="detail-head"><b>Inspector</b>
+							<button class="rt-btn" data-variant="ghost" data-size="icon-sm" type="button" data-shell-inspector aria-label="Close the inspector">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+							</button>
+						</div>
+						<!-- the selected card's tab: a piece of sheet under it, fused into
+						     the sheet's right edge with mirrored flares (one spring) -->
+						<i class="pin-tab" aria-hidden="true"></i>
+						<!-- the Patch Region aside: cards an agent adds beside the work, and
+						     the reader's pinned answers (article[data-pin], local to this
+						     browser, never sent; plugins/pill.js restores them if a stream
+						     re-send of #aside replaces them) -->
+						<div id="aside" class="shell-region" data-patch-region="aside">{{index .PatchRegions "aside"}}</div>
+						<!-- opened by hand with nothing in it, the column says what it is for -->
+						<p class="insp-empty">Nothing pinned yet. Pin a reply from the pill, or let an agent patch <code>#aside</code>, and it stays here beside the work.</p>
+					</div>
+					<script>
+						/* PRE-PAINT D: a server-rendered #aside or a remembered pin opens the
+						   inspector at first paint, with no slide (the slide is for what
+						   arrives later); plugins/pill.js renders the pins themselves */
+						(function () {
+							var pins = 0;
+							try { pins = (JSON.parse(localStorage.getItem('shell-pins') || '[]') || []).length; } catch (e) {}
+							if (pins) document.body.classList.add('has-pins');
+							/* one rule with plugins/deck.js: open = the reader opened it, or it
+							   has content and the reader did not close it */
+							var said = null; try { said = localStorage.getItem('detail'); } catch (e) {}
+							if (said !== 'closed' && (document.getElementById('aside').children.length || pins)) document.body.classList.add('insp');
+						})();
+					</script>
+				</aside>
+			</div>
+		</div>
+
+
+		<script>
+			/* END OF BODY, classic: before Datastar's first datastar-fetch, so the
+			   stream's `started` is never missed. */
+			const body = document.body;
+			const html = document.documentElement;
+			const sb = document.getElementById('shell-sidebar');
+			const authed = {{.Identity.Authenticated}};
+			const superuser = {{.Identity.Superuser}};
+			const mac = /Mac|iPhone|iPad/.test(navigator.platform);
+			function remember(key, value) { try { localStorage.setItem(key, value); } catch {} }
+			/* the Agents sidebar exists only while the pill talks to an agent (the
+			   herdr console Plugin): without #pill[data-agent] its icon is hidden and
+			   a remembered Agents panel falls back to Pages, before first paint
+			   (deck.js, a render-blocking module, places the tabs after this) */
+			const hasAgent = !!document.querySelector('#pill[data-agent]');
+			{
+				const ab = document.querySelector('.ribbon-btn[data-panel="agents"]');
+				if (ab) ab.hidden = !hasAgent;
+				if (!hasAgent && document.getElementById('region-nav').dataset.panel === 'agents') {
+					shellNav.showPanel('pages');
+					shellNav.paintRibbon(shellNav.ribbonTarget());
+				}
+			}
+			function readJSON(key, dflt) { try { return JSON.parse(localStorage.getItem(key)) ?? dflt; } catch { return dflt; } }
+			let themeModP = null;
+			const themeMod = () => (themeModP ||= import('/static/ui/plugins/theme.js'));
+
+			/* arm the live-patch entrances only AFTER first paint; the theme
+			   module is fetched then too, so no choice imports on its way */
+			requestAnimationFrame(() => requestAnimationFrame(() => { body.classList.add('live'); themeMod(); }));
+
+			/* the stream: no lamp. It is announced to assistive tech, and only a
+			   stream that gave up shows anything (a quiet "Offline · reconnect") */
+			const updates = document.getElementById('updates');
+			const reconnect = document.getElementById('shell-reconnect');
+			function setStream(state, text) {
+				const sr = document.getElementById('status-text');
+				if (sr.textContent !== text) sr.textContent = text;
+				reconnect.hidden = text !== 'stream closed';
+			}
+			document.addEventListener('datastar-fetch', e => {
+				if (e.detail?.el !== updates) return;
+				const t = e.detail?.type;
+				if (t === 'started' || t === 'datastar-patch-elements' || t === 'datastar-patch-signals') setStream('live', 'live');
+				else if (t === 'retrying' || t === 'error') setStream('warn', 'reconnecting');
+				else if (t === 'retries-failed' || t === 'finished') setStream('idle', 'stream closed');
+			});
+			/* a tab signed in when it rendered whose stream has closed asks
+			   whether it still is; signed out (here or in another tab) it
+			   reloads, so a Workspace that requires sign-in sends it to the
+			   sign-in page instead of leaving a stale "Offline · reconnect".
+			   `retrying` is skipped: it always follows an `error` that asked.
+			   (The same check as canvas and Device Control; core pins it.) */
+			function signedOutCheck() {
+				if (!authed) return;
+				fetch('/auth/session', { cache: 'no-store', credentials: 'same-origin' })
+					.then(r => r.ok ? r.json() : null)
+					.then(s => { if (s && s.authenticated === false) location.reload(); })
+					.catch(() => {});
+			}
+			document.addEventListener('datastar-fetch', e => {
+				if (e.detail?.el !== updates) return;
+				const t = e.detail?.type;
+				if (t === 'error' || t === 'retries-failed' || t === 'finished') signedOutCheck();
+			});
+			reconnect.addEventListener('click', () => location.reload());
+
+			if (!mac) {
+				for (const k of document.querySelectorAll('[data-shell-mod]')) k.textContent = k.textContent.replace('⌘', 'Ctrl ');
+				for (const b of document.querySelectorAll('.shell-top [data-tooltip*="⌘"]')) b.dataset.tooltip = b.dataset.tooltip.replace('⌘', 'Ctrl+');
+			}
+
+			/* the sidebar: plugins/deck.js choreographs the desktop toggle and the
+			   ribbon (window.deck); the state is remembered either way */
+			function toggleSidebar() {
+				if (window.deck?.toggleSidebar) return window.deck.toggleSidebar();
+				if (typeof sb.toggle !== 'function') return;
+				sb.toggle();
+				if (sb.dataset.layout !== 'mobile') remember('shell-sidebar', sb.expanded ? 'expanded' : 'collapsed');
+			}
+			function openPanel(name, opts) { if (window.deck?.openPanel) window.deck.openPanel(name, opts); }
+			sb.addEventListener('rt-sidebar-change', e => {
+				if (e.detail.layout === 'desktop') remember('shell-sidebar', e.detail.state);
+			});
+			document.getElementById('page-list').addEventListener('toggle', e => {
+				const d = e.target, k = d.dataset?.shellGroup;
+				if (!k) return;
+				if (d.hasAttribute('data-shell-auto')) { d.removeAttribute('data-shell-auto'); if (d.open) return; }
+				const open = new Set(readJSON('shell-open', []));
+				d.open ? open.add(k) : open.delete(k);
+				remember('shell-open', JSON.stringify([...open]));
+			}, true);
+
+			/* the account menu opens beside the ribbon, and above it in the drawer */
+			const account = document.getElementById('shell-account');
+			const sw = document.getElementById('deck-switch');
+			const narrowSb = matchMedia('(max-width: 767.98px)');
+			function placeMenus() {
+				const mobile = sb.dataset.layout ? sb.dataset.layout === 'mobile' : narrowSb.matches;
+				account.setAttribute('side', 'top');
+				account.setAttribute('align', 'start');
+				sw.setAttribute('side', mobile ? 'bottom' : 'right');
+			}
+			sb.addEventListener('rt-sidebar-change', placeMenus);
+			/* the switcher row opens the workspace menu (anchored on the ribbon's mark) */
+			document.querySelector('.deck-ws .shell-brand')?.addEventListener('click', (e) => {
+				e.stopPropagation();
+				sw.querySelector(':scope > [data-trigger]')?.click();
+			});
+			narrowSb.addEventListener('change', () => requestAnimationFrame(placeMenus));
+			placeMenus();
+			/* theme: the Settings panel's radios mirror the current theme */
+			const settingsPanel = document.getElementById('panel-settings');
+			function markTheme() {
+				/* at rest the DOM is the truth; while a choice waits for its
+				   transition, the radios already show the choice */
+				paintRadios(wanted || { personality: html.getAttribute('data-theme') || 'bento', mode: html.getAttribute('data-mode') || 'system' });
+			}
+			function paintRadios(t) {
+				for (const r of document.querySelectorAll('[data-theme-set]')) {
+					const [axis, v] = r.dataset.themeSet.split(':');
+					r.setAttribute('aria-checked', String(axis === 'mode' ? v === t.mode : v === (t.personality === 'bento' ? '' : t.personality)));
+				}
+			}
+			/* THE THEME SWITCH (K1): every control (settings, the pill's Theme
+			   pane, the palette, the pill's "dark"/"light" replies, a script)
+			   funnels through here. Two simple, honest transitions:
+			   - a change of MODE is always the radial reveal (a View Transition,
+			     pages/_shell.css): from the pressed control, or, with none (the
+			     palette, a key, a script), from the pill's Theme chip. No frame
+			     mixes light and dark, so nothing passes through mid-grey;
+			   - a change of PERSONALITY is a fade-through: the page fades to the
+			     current ground (120ms), the swap happens while nothing is seen,
+			     the new face's font is awaited, and the new page fades in (160ms).
+			     No frame shows two typefaces.
+			   Order of events for one choice:
+			   1. at once, synchronously: the choice is PERSISTED (a navigation
+			      30ms later keeps it) and the radios paint it;
+			   2. a fold or inspector flight in progress lands first: the theme
+			      takes its landing (deck.landed), so the reveal starts in the
+			      landing's frame and brings the unseen content in with it
+			      (deck.reveal), with no fade-in to wait out first; a flight
+			      in progress is cut short at once (deck.hurry);
+			   3. a newer choice while a transition runs: before the swap, the
+			      swap applies the newest on its own axis only; after it, the running transition is
+			      finished (≤160ms) and the next one runs from what is on screen;
+			   4. reduced motion: an instant swap.
+			   Every exit path ends in markTheme() and 'shell:theme', so the
+			   radios always agree with <html> at rest. */
+			const themeReduced = matchMedia('(prefers-reduced-motion: reduce)');
+			const themeVTs = typeof document.startViewTransition === 'function';
+			let themeVT = null;
+			const frame = () => new Promise(r => requestAnimationFrame(() => r()));
+			const wait = (ms) => new Promise(r => setTimeout(r, ms));
+			/* the running reveal, sped to its end (its remaining time squeezed
+			   into ≤160ms, never skipped: a skip is a snap), then awaited */
+			async function finishThemeVT(ms = 160) {
+				const t = themeVT; if (!t) return;
+				for (const a of html.getAnimations({ subtree: true })) {
+					if (!String(a.effect?.pseudoElement || '').startsWith('::view-transition')) continue;
+					const left = (a.effect.getComputedTiming().endTime || 0) - (a.currentTime || 0);
+					if (left > ms) a.updatePlaybackRate(left / ms);
+				}
+				await t.finished.catch(() => {});
+			}
+			/* a personality's own face, awaited before its fade-in (capped): Folio
+			   sets titles in Libron, Harbor its figures in JetBrains Mono. Fetched
+			   ahead once the page is idle (a preload would warn on every page) */
+			const FACES = { folio: ['400 1em Libron', '700 1em Libron'], harbor: ['400 1em "JetBrains Mono"', '600 1em "JetBrains Mono"'] };
+			const loadFaces = (p) => Promise.all((FACES[p] || []).map(f => document.fonts.load(f).catch(() => {})));
+			(window.requestIdleCallback || (f => setTimeout(f, 400)))(() => { themeMod(); vtOriginRule(); for (const p in FACES) if (html.dataset.theme !== p) loadFaces(p); });
+			/* where the reveal starts: the [data-theme-set] control just pressed
+			   (pointer, or Enter/Space on it) when it is still in sight as the
+			   reveal starts; with none, or one folded away meanwhile, the pill's
+			   Theme chip, or the pill's home in the bar when that is hidden */
+			let themePress = null;
+			addEventListener('pointerdown', e => { const c = e.target.closest?.('[data-theme-set]'); themePress = c ? { c, x: e.clientX, y: e.clientY, t: performance.now() } : null; }, true);
+			addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { const c = document.activeElement?.closest?.('[data-theme-set]'); themePress = c ? { c, t: performance.now() } : null; } }, true);
+			function themeOrigin(p) {
+				const centre = (el) => { const r = el?.getBoundingClientRect(); return r && r.width ? [r.left + r.width / 2, r.top + r.height / 2] : null; };
+				const seen = (el) => { const c = centre(el), hit = c && document.elementFromPoint(c[0], c[1]); return !!hit && (el.contains(hit) || hit.contains(el)); };
+				let at = p && p.c.isConnected && seen(p.c) ? (p.x !== undefined ? [p.x, p.y] : centre(p.c)) : null;
+				at ||= centre(document.querySelector('#pill [data-tool="theme"]')) || centre(document.getElementById('region-status')) || [innerWidth / 2, innerHeight];
+				const [x, y] = at;
+				/* the disc ends exactly past the farthest corner (plus its 48px rim) */
+				const far = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y)) + 56;
+				/* written on the reveal's own pseudo, never on <html>: a custom
+				   property on the root restyled all ~1200 elements (~37ms) in the
+				   capture frame, delaying the reveal; this rule restyles one */
+				const st = vtOriginRule().style;
+				st.setProperty('--vt-x', Math.round(x) + 'px');
+				st.setProperty('--vt-y', Math.round(y) + 'px');
+				st.setProperty('--vt-end', Math.ceil(far) + 'px');
+			}
+			let vtRule = null;
+			function vtOriginRule() {
+				if (vtRule && document.adoptedStyleSheets.includes(vtRule.parentStyleSheet)) return vtRule;
+				const sh = new CSSStyleSheet();
+				sh.replaceSync('::view-transition-old(root) { --vt-x: 50%; --vt-y: 100%; --vt-end: 150vmax; }');
+				document.adoptedStyleSheets = [...document.adoptedStyleSheets, sh];
+				return (vtRule = sh.cssRules[0]);
+			}
+			/* the choice, written now: the same keys and semantics as theme.js's applyTheme */
+			function persistTheme(t) {
+				try {
+					t.personality ? localStorage.setItem('theme-name', t.personality) : localStorage.removeItem('theme-name');
+					if (t.mode === 'system') { localStorage.removeItem('theme'); localStorage.removeItem('ds-admin-theme'); }
+					else { localStorage.setItem('theme', t.mode); localStorage.setItem('ds-admin-theme', t.mode); }
+				} catch {}
+			}
+			const domTheme = () => ({ personality: html.getAttribute('data-theme') || '', mode: html.getAttribute('data-mode') || 'system' });
+			let wanted = null;    /* the latest choice, ahead of the DOM while a transition runs */
+			let themeRun = null;  /* the loop applying `wanted` (one transition at a time) */
+			let themeAsk = { palette: false }, swapped = false, themeFrom = null;
+			function setTheme(axis, v, opts = {}) {
+				const next = { ...(wanted || domTheme()), [axis]: axis === 'personality' ? (v === 'bento' ? '' : v || '') : v };
+				wanted = next;
+				persistTheme(next);              /* 1. synchronously: a navigation 30ms later keeps it */
+				paintRadios(next);
+				if (axis === 'mode') { const p = themePress; themeFrom = p && performance.now() - p.t < 1500 ? p : null; }
+				themePress = null;
+				themeAsk = { palette: !!opts.palette || !!document.querySelector('#pill.is-cmd') };
+				if (themeRun) {
+					/* interrupted: a reveal that has swapped is finished (≤160ms);
+					   a fade-through still fading out applies the newest at its swap */
+					if (themeVT && swapped) finishThemeVT(160);
+					return themeRun;
+				}
+				themeRun = runTheme().finally(() => {
+					themeRun = null;
+					wanted = null;
+					markTheme();                 /* every exit path: the radios match <html> */
+					document.dispatchEvent(new CustomEvent('shell:theme'));
+				});
+				return themeRun;
+			}
+			async function runTheme() {
+				const deck = window.deck;
+				try { await themeLoop(deck); } finally { deck?.reveal?.(false); }   /* content a landing handed over is never left unseen */
+			}
+			async function themeLoop(deck) {
+				const { applyTheme, resolveMode } = await themeMod();
+				for (let guard = 0; guard < 8; guard++) {
+					/* 2. a width flight lands first (a long one is cut short) and
+					   its landing is handed over: the content waits, unseen */
+					let handed = false;   /* a landed flight's content, held unseen at its old layout */
+					if (deck?.landed && !themeReduced.matches && (deck.flying() || deck.busy())) {
+						if (deck.flying()) deck.hurry();   /* cut short now: the reveal starts on the landed frame */
+						handed = await deck.landed();
+					}
+					const cur = domTheme(), next = wanted;
+					if (!next || (cur.mode === next.mode && cur.personality === next.personality)) return;
+					const ask = themeAsk; themeAsk = { palette: false };
+					const modeChange = resolveMode(cur.mode) !== resolveMode(next.mode);
+					if (!modeChange && cur.personality === next.personality) {
+						applyTheme(next);   /* System resolving to what is shown: nothing to see, no transition */
+					} else if (themeReduced.matches || document.hidden || (modeChange && !themeVTs)) {
+						/* the instant swap */
+						html.classList.add('theme-swap');
+						applyTheme(next);
+						getComputedStyle(body).color;
+						await frame(); await frame();
+						html.classList.remove('theme-swap');
+					} else if (modeChange) {
+						/* the reveal: the old snapshot on top, a hole growing through it */
+						html.classList.toggle('theme-vt-cap', ask.palette);
+						html.classList.add('theme-vt');
+						/* L1: after a flight the reveal starts on the landed frame and
+						   the update only swaps the theme (applyTheme). The landing's
+						   reflow and plots were done in the landing frame, before this
+						   (deck.js handBack); the content, still at opacity 0, is shown
+						   as soon as the swap is done and the disc sweeps it in */
+						themeOrigin(themeFrom); themeFrom = null;
+						swapped = false;
+						const t = themeVT = document.startViewTransition(() => {
+							swapped = true;
+							html.classList.add('theme-swap');
+							html.classList.remove('theme-vt-cap');
+							applyTheme({ ...(wanted || next), personality: next.personality });   /* the newest mode; a newer face waits for its own fade-through */
+							getComputedStyle(body).color;
+						});
+						/* L1: a landing handed over was laid out and plotted before the
+						   capture (deck.js handBack); it is shown as soon as the swap is
+						   done, outside the update callback and before the new view is
+						   painted, so the reveal's disc brings it in */
+						t.updateCallbackDone.then(() => deck?.reveal?.(true), () => deck?.reveal?.(false));
+						await t.finished.catch(() => {});
+						/* a handed landing lands next: the loop's next pass finds it
+						   still held, and the finally below reveals it, once */
+						if (themeVT === t) themeVT = null;
+						swapped = false;
+						html.classList.remove('theme-swap', 'theme-vt', 'theme-vt-cap');
+					} else {
+						/* the fade-through: out to the current ground, swap unseen, in */
+						const veil = document.createElement('div');
+						veil.className = 'theme-veil'; veil.setAttribute('aria-hidden', 'true');
+						veil.style.background = getComputedStyle(document.querySelector('.sheet') || body).backgroundColor;
+						body.append(veil);
+						await veil.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 120, easing: 'cubic-bezier(0.4, 0, 0.6, 1)', fill: 'forwards' }).finished.catch(() => {});
+						const n = { ...(wanted || next), mode: next.mode };   /* only the face changes under the veil; a newer mode gets its own reveal next pass */
+						html.classList.add('theme-swap');
+						applyTheme(n);
+						getComputedStyle(body).color;
+						await Promise.race([loadFaces(n.personality), wait(300)]);
+						html.classList.remove('theme-swap');
+						deck?.reveal?.(true);           /* a landed flight's content, shown under the veil */
+						await frame(); await frame();   /* the new tokens' long restyle and paint are paid unseen */
+						await veil.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, easing: 'cubic-bezier(0.23, 1, 0.32, 1)', fill: 'forwards' }).finished.catch(() => {});
+						veil.remove();
+					}
+				}
+			}
+			/* a width flight starting while a reveal runs: the reveal is sped to
+			   its end, so no flight moves under a frozen snapshot (deck.js) */
+			const hurryThemeVT = () => { if (themeVT && swapped) finishThemeVT(160); };
+			settingsPanel.addEventListener('click', e => {
+				const b = e.target.closest('button'); if (!b) return;
+				if (b.dataset.themeSet) { const [axis, v] = b.dataset.themeSet.split(':'); setTheme(axis, v); }
+				else if (b.hasAttribute('data-signout')) signOut();
+			});
+			/* the mode follows the OS or the titlebar switcher: keep the radios true */
+			new MutationObserver(markTheme).observe(html, { attributes: true, attributeFilter: ['data-mode', 'data-theme'] });
+			account.addEventListener('rt-dropdown-menu-select', e => {
+				const v = e.detail.value || '';
+				if (v === 'settings') setTimeout(() => openPanel('settings'), 0);
+				else if (v === 'signout') signOut();
+			});
+			markTheme();
+			function signOut() { fetch('/auth/logout', { method: 'POST' }).finally(() => location.reload()); }
+			sw.addEventListener('rt-dropdown-menu-select', e => {
+				const v = e.detail.value || '';
+				if (v === 'palette') setTimeout(openPalette, 0);
+				else if (v === 'copy') navigator.clipboard?.writeText(location.href).catch(() => {});
+			});
+
+			/* the inspector: plugins/deck.js owns its state (body.insp, from the
+			   reader's word and #aside's content); this only names the buttons */
+			const detail = document.getElementById('region-detail');
+			function nameDetail() {
+				const open = body.classList.contains('insp');
+				for (const b of document.querySelectorAll('[data-shell-inspector]')) {
+					b.setAttribute('aria-expanded', String(open));
+					if (b.closest('.shell-top')) b.setAttribute('aria-label', open ? 'Hide the inspector' : 'Show the inspector');
+				}
+			}
+			function toggleInspector(force) {
+				const open = window.deck?.toggleInspector ? window.deck.toggleInspector(force) : body.classList.toggle('insp', force);
+				nameDetail();
+				return open;
+			}
+			addEventListener('deck:inspector-state', nameDetail);
+			document.addEventListener('click', e => {
+				if (e.target.closest?.('[data-shell-inspector]')) toggleInspector();
+				else if (e.target.closest?.('[data-shell-palette]')) openPalette();
+			});
+			nameDetail();
+
+			/* .table-wrap scroll affordance */
+			function fade(w) {
+				const over = w.scrollWidth - w.clientWidth > 1;
+				w.classList.toggle('scrolls', over);
+				w.classList.toggle('at-end', !over || w.scrollLeft + w.clientWidth >= w.scrollWidth - 1);
+				w.style.setProperty('--sl', w.scrollLeft + 'px');
+			}
+			function fadeAll() { for (const w of document.querySelectorAll('.table-wrap')) fade(w); }
+			document.addEventListener('scroll', e => {
+				const w = e.target;
+				if (w instanceof Element && w.classList.contains('table-wrap')) fade(w);
+			}, true);
+			addEventListener('resize', fadeAll); addEventListener('load', fadeAll); fadeAll();
+			let fadeTick = 0;
+			new MutationObserver(() => { if (!fadeTick) fadeTick = requestAnimationFrame(() => { fadeTick = 0; fadeAll(); }); })
+				.observe(document.body, { childList: true, subtree: true });
+
+			/* the palette lives IN the pill (plugins/pill.js builds it from
+			   shellNav.model() and runs its actions through window.shell): Ctrl/⌘ K
+			   grows it up out of the pill. There is no other search. */
+			function openPalette() { window.pill?.command(true); }
+			function buildPalette() { window.pill?.rebuild?.(); }
+
+			/* the shell's API for the pill and for page code */
+			window.shell = {
+				openPalette, setTheme, hurryThemeVT, markTheme, signOut, authed, superuser, mac, toggleSidebar, toggleInspector, openPanel, hasAgent,
+				panels: shellNav.panels,
+				currentTheme: async () => (await themeMod()).currentTheme(),
+				copyURL: () => navigator.clipboard?.writeText(location.href).catch(() => {}),
+			};
+
+			/* the shell's keys, each YIELDING to the page (a page's own Ctrl-K
+			   palette, a page sidebar bound to b, and editables) */
+			document.addEventListener('keydown', e => {
+				const k = e.key?.toLowerCase();
+				const mod = (e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey;
+				if (mod && k === 'k') {
+					if (document.querySelector('#main dialog.rt-command-dialog')) return;
+					e.preventDefault();
+					window.pill?.command();
+					return;
+				}
+				if (mod && k === 'b') {
+					if (e.target?.isContentEditable || document.querySelector('#main rt-sidebar[shortcut="b"]')) return;
+					e.preventDefault();
+					toggleSidebar();
+					return;
+				}
+				if (mod && k === '.') {
+					if (e.target?.isContentEditable) return;
+					e.preventDefault();
+					toggleInspector();
+					return;
+				}
+				/* Alt+1…5: the sidebars (e.code, so a layout's Alt-symbols never
+				   interfere); Alt+5 (Agents) only while the pill has an agent */
+				if (e.altKey && !e.metaKey && !e.ctrlKey && /^Digit[1-5]$/.test(e.code || '')) {
+					const name = shellNav.panels[+e.code.slice(5) - 1];
+					if (name === 'agents' && !hasAgent) return;
+					e.preventDefault();
+					openPanel(name, { focus: true, toggle: true });
+					return;
+				}
+				if (e.key === 'Escape' && !e.defaultPrevented && body.classList.contains('insp')
+					&& detail.contains(document.activeElement)
+					/* a light-dismiss popover or a modal takes Esc first; a manual
+					   popover (the page's toaster stays open) never blocks it */
+					&& ![...document.querySelectorAll(':popover-open, dialog:modal')].some(p => p.matches('dialog:modal') || p.getAttribute('popover') !== 'manual' || p.contains(document.activeElement))) {
+					toggleInspector(false);
+					document.querySelector('.shell-top [data-shell-inspector]')?.focus();
+				}
+			});
+
+			/* the page list: /api/pages reconciles it for a superuser */
+			let lastList = shellNav.key();
+			let polling = superuser;
+			async function refreshPages() {
+				if (!polling || document.hidden) return;
+				try {
+					const res = await fetch('/api/pages');
+					if (res.status === 401 || res.status === 403) { polling = false; return; }
+					if (!res.ok) return;
+					const key = shellNav.setPages(await res.json() || []);
+					if (key === lastList) return;
+					lastList = key;
+					shellNav.renderTree(document.getElementById('page-list'));
+					{ const o = document.getElementById('shell-crumbs'); if (o) shellNav.renderCrumbs(o); }
+					buildPalette();
+					window.deck?.lens?.(true);
+				} catch {}
+			}
+			if (superuser) {
+				refreshPages();
+				setInterval(refreshPages, 15000);
+				addEventListener('focus', refreshPages);
+				document.addEventListener('visibilitychange', refreshPages);
+			}
+		</script>
+		<!-- the assistant pill in the sheet's bar -->
+		<script type="module" src="/app/plugins/pill.js"></script>
+	</body>
+</html>

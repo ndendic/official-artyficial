@@ -1,0 +1,29 @@
+{
+  "name": "relay",
+  "displayName": "Relay",
+  "kind": "theme",
+  "version": "1.0.4",
+  "description": "Futuristic and agentic: cool graphite, a near-black emphasis surface, electric cyan as the signal, violet as the agent mark and a mono hero face.",
+  "publisher": {
+    "name": "Artyficial",
+    "url": "https://github.com/ndendic/official-artyficial"
+  },
+  "repository": "https://github.com/ndendic/official-artyficial",
+  "license": "MIT",
+  "tags": [
+    "theme",
+    "futuristic",
+    "cyan",
+    "graphite"
+  ],
+  "screenshots": [
+    ".artyficial/screenshot-day.webp",
+    ".artyficial/screenshot-night.webp"
+  ],
+  "readme": "README.md",
+  "platform": {
+    "min": "0.20.1",
+    "max_exclusive": null
+  },
+  "manifest": "manifest.json"
+}

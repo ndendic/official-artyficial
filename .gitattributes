@@ -1,0 +1,4 @@
+# Shell and theme packages carry sha256 digests of their files in manifest.json.
+# A checkout must hold the committed bytes, so no end-of-line conversion touches them.
+shells/** -text
+themes/** -text
