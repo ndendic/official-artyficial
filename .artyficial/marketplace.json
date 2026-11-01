@@ -1,0 +1,82 @@
+{
+  "name": "official-artyficial",
+  "owner": {
+    "name": "Artyficial",
+    "url": "https://github.com/ndendic"
+  },
+  "description": "The official Artyficial listings: Plugins, Page Shells and Theme Packages for RT Station.",
+  "extensions": [
+    {
+      "name": "artyficial.herdr",
+      "source": "./plugins/herdr",
+      "kind": "plugin",
+      "displayName": "herdr console"
+    },
+    {
+      "name": "canvas",
+      "source": "./shells/canvas",
+      "kind": "shell",
+      "displayName": "Canvas"
+    },
+    {
+      "name": "ribbon-sheet",
+      "source": "./shells/ribbon-sheet",
+      "kind": "shell",
+      "displayName": "Ribbon & Sheet"
+    },
+    {
+      "name": "ribbon-deck",
+      "source": "./shells/ribbon-deck",
+      "kind": "shell",
+      "displayName": "Ribbon & Sheet Showcase"
+    },
+    {
+      "name": "bento",
+      "source": "./themes/bento",
+      "kind": "theme",
+      "displayName": "Bento"
+    },
+    {
+      "name": "coast",
+      "source": "./themes/coast",
+      "kind": "theme",
+      "displayName": "Coast"
+    },
+    {
+      "name": "folio",
+      "source": "./themes/folio",
+      "kind": "theme",
+      "displayName": "Folio"
+    },
+    {
+      "name": "harbor",
+      "source": "./themes/harbor",
+      "kind": "theme",
+      "displayName": "Harbor"
+    },
+    {
+      "name": "ledger",
+      "source": "./themes/ledger",
+      "kind": "theme",
+      "displayName": "Ledger"
+    },
+    {
+      "name": "noir",
+      "source": "./themes/noir",
+      "kind": "theme",
+      "displayName": "Noir"
+    },
+    {
+      "name": "relay",
+      "source": "./themes/relay",
+      "kind": "theme",
+      "displayName": "Relay"
+    },
+    {
+      "name": "sprout",
+      "source": "./themes/sprout",
+      "kind": "theme",
+      "displayName": "Sprout"
+    }
+  ]
+}
