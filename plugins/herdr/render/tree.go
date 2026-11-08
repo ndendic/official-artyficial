@@ -262,12 +262,15 @@ const maxTextRunes = 2000
 
 // FitView is FitTree plus what core's result schema and payload cap need: a
 // top-level node is an element (whitespace between elements is dropped, other
-// top-level text goes into a span), and the view's JSON is at most
-// MaxViewBytes (long text is cut first, then whatever is last in document
-// order). The argument is never changed.
+// top-level text goes into a span, and that span counts against max), and the
+// view's JSON is at most MaxViewBytes. Over that, long text is cut first;
+// then the end of the largest answer (hc-a), else of the largest element, goes
+// and CutNote says so, as FitTree does for nodes, so the other turns, the
+// confirm bar, the dialog card and the error line stay whole. The argument is
+// never changed.
 func FitView(nodes []Node, max int) []Node {
-	nodes = FitTree(nodes, max)
-	out := make([]Node, 0, len(nodes))
+	limit := max
+	wrapped := make([]Node, 0, len(nodes))
 	for _, v := range nodes {
 		if s, ok := v.(string); ok {
 			if strings.TrimSpace(s) == "" {
@@ -275,10 +278,15 @@ func FitView(nodes []Node, max int) []Node {
 			}
 			v = Element{T: "span", K: []Node{s}}
 		}
-		out = append(out, v)
+		wrapped = append(wrapped, v)
 	}
+	out := FitTree(wrapped, max)
 	for size := jsonSize(out); size > MaxViewBytes; size = jsonSize(out) {
 		if next := cutText(out, maxTextRunes); jsonSize(next) < size {
+			out = next
+			continue
+		}
+		if next := cutBytes(out, size-MaxViewBytes); jsonSize(next) < size {
 			out = next
 			continue
 		}
@@ -289,7 +297,99 @@ func FitView(nodes []Node, max int) []Node {
 		budget := max
 		out = prune(out, &budget, 0)
 	}
+	// the note can add nodes to a view that was at its limit
+	if CountNodes(out) > limit {
+		out = FitTree(out, limit)
+	}
 	return out
+}
+
+// largestPath is the child-index path to the element cutBytes cuts inside:
+// the answer (hc-a) with the most JSON, else the largest top-level element;
+// nil when there is no element.
+func largestPath(nodes []Node) []int {
+	var best []int
+	bestN := 0
+	var walk func(ns []Node, path []int)
+	walk = func(ns []Node, path []int) {
+		for i, v := range ns {
+			el, ok := v.(Element)
+			if !ok {
+				continue
+			}
+			p := append(append([]int(nil), path...), i)
+			if isAnswer(el) {
+				if n := jsonSize(el.K); n > bestN {
+					best, bestN = p, n
+				}
+			}
+			walk(el.K, p)
+		}
+	}
+	walk(nodes, nil)
+	if best != nil {
+		return best
+	}
+	for i, v := range nodes {
+		if _, ok := v.(Element); ok {
+			if n := jsonSize(nodes[i : i+1]); n > bestN {
+				best, bestN = []int{i}, n
+			}
+		}
+	}
+	return best
+}
+
+// cutBytes returns nodes with about excess bytes of JSON cut from the end of
+// the largest answer (else the largest top-level element) and CutNote added.
+func cutBytes(nodes []Node, excess int) []Node {
+	path := largestPath(nodes)
+	if path == nil {
+		return nodes
+	}
+	note := Element{T: "p", A: map[string]string{"class": "hc-wait"}, K: []Node{CutNote}}
+	want := excess + jsonSize([]Node{note}) + 1
+	var rebuild func(ns []Node, path []int) []Node
+	rebuild = func(ns []Node, path []int) []Node {
+		out := append([]Node(nil), ns...)
+		el := out[path[0]].(Element)
+		if len(path) == 1 {
+			k, _ := cutTailBytes(el.K, want)
+			el.K = append(k, note)
+		} else {
+			el.K = rebuild(el.K, path[1:])
+		}
+		out[path[0]] = el
+		return out
+	}
+	return rebuild(nodes, path)
+}
+
+// cutTailBytes is cutTail by JSON bytes: whole trailing nodes while they fit
+// the want, else the tail inside the last element. It returns what is left
+// and the bytes it removed.
+func cutTailBytes(ks []Node, want int) ([]Node, int) {
+	out := append([]Node(nil), ks...)
+	removed := 0
+	for len(out) > 0 && removed < want {
+		last := out[len(out)-1]
+		sz := jsonSize([]Node{last}) - 1 // the node and its comma
+		el, isEl := last.(Element)
+		if sz <= want-removed || !isEl || len(el.K) == 0 {
+			out = out[:len(out)-1]
+			removed += sz
+			continue
+		}
+		k, r := cutTailBytes(el.K, want-removed)
+		if len(k) == 0 {
+			k = nil
+		}
+		el.K = k
+		out[len(out)-1] = el
+		removed += r
+		break
+	}
+	return out, removed
 }
 
 func jsonSize(nodes []Node) int {

@@ -222,3 +222,72 @@ func TestFitViewBoundsBytes(t *testing.T) {
 		t.Fatalf("many: size %d", n)
 	}
 }
+
+// An oversized thread loses the end of its largest answer, not the newest
+// turns, the confirm bar, the dialog card or the error line.
+func TestFitViewByteCutKeepsTheTailOfTheThread(t *testing.T) {
+	para := "<p>" + strings.Repeat("y", 1500) + "</p>"
+	big := `<div class="hc-a" id="hc-a-big">` + strings.Repeat(para, 400) + `</div>`
+	tree, _ := Tree(`<div id="hc-thread">` + answerOf("old", 3) + big + answerOf("newest", 3) + `</div>` +
+		`<div id="hc-confirm">confirm-bar</div><div class="hc-dialog">dialog-card</div><p id="hc-error">error-line</p>`)
+	got := FitView(tree, MaxViewNodes)
+	if n := jsonSize(got); n > MaxViewBytes || n == 0 {
+		t.Fatalf("size %d", n)
+	}
+	flat := flatText(got)
+	for _, want := range []string{"confirm-bar", "dialog-card", "error-line", CutNote} {
+		if !strings.Contains(flat, want) {
+			t.Errorf("%q is gone from the cut view", want)
+		}
+	}
+	ids := map[string]int{}
+	var walk func([]Node)
+	walk = func(ns []Node) {
+		for _, n := range ns {
+			if el, ok := n.(Element); ok {
+				ids[el.A["id"]] = CountNodes(el.K)
+				walk(el.K)
+			}
+		}
+	}
+	walk(got)
+	if ids["hc-a-old"] != 6 || ids["hc-a-newest"] != 6 {
+		t.Errorf("another turn was cut: %v", ids)
+	}
+	if ids["hc-a-big"] == 0 {
+		t.Error("the big answer is gone")
+	}
+}
+
+// With no answer to cut, the largest element is cut inside and says so.
+func TestFitViewByteCutWithoutAnswerLeavesANote(t *testing.T) {
+	para := "<p>" + strings.Repeat("y", 1500) + "</p>"
+	tree, _ := Tree(`<div id="hc-a-x">` + strings.Repeat(para, 400) + `</div><div id="hc-confirm">confirm-bar</div>`)
+	got := FitView(tree, MaxViewNodes)
+	flat := flatText(got)
+	if jsonSize(got) > MaxViewBytes || !strings.Contains(flat, CutNote) || !strings.Contains(flat, "confirm-bar") {
+		t.Errorf("size %d, note %v, confirm %v", jsonSize(got), strings.Contains(flat, CutNote), strings.Contains(flat, "confirm-bar"))
+	}
+}
+
+// Wrapping top-level text in a span counts against the node budget.
+func TestFitViewWrapCountsAgainstTheBudget(t *testing.T) {
+	// exactly max nodes, all top-level text: each one gains a span.
+	const max = 4000
+	tree := make([]Node, 0, max)
+	for i := 0; i < max; i++ {
+		tree = append(tree, "text")
+	}
+	if CountNodes(tree) != max {
+		t.Fatal("setup")
+	}
+	got := FitView(tree, max)
+	if n := CountNodes(got); n > max {
+		t.Errorf("%d nodes over %d after wrapping", n, max)
+	}
+	for _, v := range got {
+		if _, ok := v.(Element); !ok {
+			t.Fatalf("top-level %T", v)
+		}
+	}
+}
