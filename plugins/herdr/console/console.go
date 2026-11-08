@@ -27,7 +27,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/ndendic/data-start/sdk/go/publisher"
@@ -132,6 +131,10 @@ type Console struct {
 	// PanelInterval is the Agents panel's shortest time between two live
 	// re-renders (default 500 ms: at most 2 a second).
 	PanelInterval time.Duration
+	// StartWait is how long a "start" call waits for the session to come
+	// up before it answers (default 8 s); the end of a slower start waits
+	// for the next reply.
+	StartWait time.Duration
 
 	// spaceMu guards the cache of herdr's workspaces (the panel's groups).
 	spaceMu   sync.Mutex
@@ -151,7 +154,7 @@ func New(life context.Context, cfg Config, h herdr.Client, w *herdr.Watcher, new
 	if cfg.DataDir != "" {
 		path = filepath.Join(cfg.DataDir, "opened.json")
 	}
-	return &Console{cfg: cfg, herdr: h, watch: w, newCaller: newCaller, opened: LoadRegistry(path), life: life, now: time.Now, Tick: 250 * time.Millisecond, PanelInterval: 500 * time.Millisecond, sessions: map[string]*session{}}
+	return &Console{cfg: cfg, herdr: h, watch: w, newCaller: newCaller, opened: LoadRegistry(path), life: life, now: time.Now, Tick: 250 * time.Millisecond, PanelInterval: 500 * time.Millisecond, StartWait: 8 * time.Second, sessions: map[string]*session{}}
 }
 
 // Opened exposes the registry (tests and status).
@@ -166,9 +169,12 @@ type pending struct {
 type session struct {
 	id     string
 	caller Patcher
-	// only is set while the page draws views itself (Request.Views or
-	// Feed): the recorder around caller sends the Patcher nothing.
-	only atomic.Bool
+	// lateViews, lateAgent are what a draw outside any call (the start of a
+	// session, the end of one) made for a page that takes no Patcher
+	// patch: the next reply carries them (takeLate).
+	lateViews    []View
+	lateAgent    any
+	hasLateAgent bool
 	// feedThread and feedAgents are the last view a feed gave this page
 	// ("" when it holds none), so an unchanged one is not sent again.
 	feedThread string
@@ -219,19 +225,34 @@ func (c *Console) Handle(ctx context.Context, ticket string, req Request) (map[s
 		return map[string]any{"ok": false, "message": "artyficial.herdr.console renders into the browser session that calls it: call it from the pill of a signed-in page"}, nil
 	}
 	s := c.session(ticket)
-	drawn := req.Views || req.Feed
-	s.only.Store(drawn)
-	col := &collector{}
+	// Which page draws views is this call's own: a feed or views call sends
+	// the Patcher nothing, and no other call of the session is changed by it
+	// (the browser session is shared by every tab).
+	col := &collector{only: req.Views || req.Feed}
+	// What an earlier draw outside any call (the start of a session, the
+	// end of one) could not give a page comes first: it is older than this
+	// call's own views. What such a draw made while this call ran (a start
+	// that came up within the call's wait) comes last: it is newer.
+	older, olderAgent, hasOlder := s.takeLate()
 	res, f := c.dispatch(context.WithValue(ctx, collectorKey{}, col), s, req)
 	if res == nil {
+		s.restoreLate(older, olderAgent, hasOlder)
 		return res, f
 	}
-	if views := col.list(); len(views) > 0 {
+	newer, newerAgent, hasNewer := s.takeLate()
+	views := append(older, col.list()...)
+	views = append(views, newer...)
+	if len(views) > 0 {
 		res["views"] = views
-	} else if !drawn {
-		// Nothing to draw and a page that takes Caller patches: the chip
-		// was patched as a signal, the reply is what it always was.
-		delete(res, "agent")
+	}
+	agent, hasAgent := olderAgent, hasOlder
+	if hasNewer {
+		agent, hasAgent = newerAgent, true
+	}
+	if hasAgent {
+		if _, ok := res["agent"]; !ok {
+			res["agent"] = agent
+		}
 	}
 	return res, f
 }
@@ -275,7 +296,7 @@ func (c *Console) session(ticket string) *session {
 	s := c.sessions[id]
 	if s == nil {
 		s = &session{id: id}
-		s.caller = &recorder{Patcher: probe, viewsOnly: &s.only}
+		s.caller = &recorder{Patcher: probe, s: s}
 		c.sessions[id] = s
 	} else {
 		s.caller.Renew(ticket)
@@ -744,8 +765,25 @@ func (c *Console) start(ctx context.Context, s *session, req Request) (map[strin
 	if err := c.setView(ctx, s, "starting", render.Starting(name, kind, cwd)); err != nil {
 		return nil, patchFault(err)
 	}
-	go c.startAsync(s, name, kind, cwd)
-	return map[string]any{"ok": true, "view": "starting", "name": name}, nil
+	// The start runs on the Plugin's own life, not the call's, and outside
+	// the call's collector: a page that takes no Patcher patch cannot be
+	// told of its end by one. The call waits a little for it, so the usual
+	// start answers with the thread (the late views and chip, see Handle);
+	// a slow one leaves them for the next reply.
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		c.startAsync(s, name, kind, cwd)
+	}()
+	select {
+	case <-done:
+	case <-time.After(c.StartWait):
+	case <-ctx.Done():
+	}
+	s.mu.Lock()
+	view := s.view
+	s.mu.Unlock()
+	return map[string]any{"ok": true, "view": view, "name": name}, nil
 }
 
 func (c *Console) crewName(name string) bool {
@@ -758,7 +796,7 @@ func (c *Console) crewName(name string) bool {
 }
 
 func (c *Console) startAsync(s *session, name, kind, cwd string) {
-	ctx, cancel := context.WithTimeout(c.life, 3*time.Minute)
+	ctx, cancel := context.WithTimeout(lateContext(c.life, s), 3*time.Minute)
 	defer cancel()
 	o, err := c.herdr.OpenTab(ctx, c.cfg.ConsoleWorkspace, cwd, name)
 	if err != nil {
@@ -937,8 +975,10 @@ func (c *Console) followAction(ctx context.Context, s *session, req Request) (ma
 }
 
 // feedThreadView adds the follower's current thread to the call's views,
-// from the state it last read and without a patch, unless the person is on
-// another view (the picker, the form) or the page already holds this one.
+// from the state it last read and without a patch, when the person has the
+// thread open and the page does not already hold this one. On the picker,
+// the form, or no console at all (dismissed, or a page that just loaded)
+// it adds nothing, as the Patcher path draws nothing there either.
 func (c *Console) feedThreadView(ctx context.Context, s *session, f *follower) {
 	col := collectorOf(ctx)
 	if col == nil {
@@ -947,13 +987,14 @@ func (c *Console) feedThreadView(ctx context.Context, s *session, f *follower) {
 	s.mu.Lock()
 	view := s.view
 	s.mu.Unlock()
-	if view != "" && view != "thread" {
+	// Only a console the person has open: the Patcher path draws nothing
+	// into a dismissed or freshly loaded page either.
+	if view != "thread" {
 		return
 	}
 	html := f.snapshot(ctx)
 	s.mu.Lock()
 	same := s.view == "thread" && s.feedThread == html
-	s.view = "thread"
 	s.feedThread = html
 	s.mu.Unlock()
 	if !same {

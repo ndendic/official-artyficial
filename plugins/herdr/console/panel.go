@@ -78,6 +78,11 @@ func badgeSignal(b string) json.RawMessage {
 // session's page heard (always when force). A send no page heard is not
 // counted, so the next call sends it again.
 func (c *Console) sendBadge(ctx context.Context, s *session, force bool) error {
+	if viewsOnly(ctx) {
+		// This call sends no patch, so nothing was heard: it is not
+		// recorded, and the next round of the live loop sends it.
+		return nil
+	}
 	s.badgeMu.Lock()
 	defer s.badgeMu.Unlock()
 	agents, err := c.agents(ctx)
@@ -207,7 +212,7 @@ func (c *Console) agentsAction(ctx context.Context, s *session, req Request) (ma
 	s.panelFilter = filter
 	s.mu.Unlock()
 	l, err := c.renderPanel(ctx, s, true)
-	if !s.only.Load() {
+	if !viewsOnly(ctx) {
 		c.ensurePanelLoop(s)
 	}
 	if err != nil {
@@ -245,6 +250,7 @@ func (c *Console) renderPanel(ctx context.Context, s *session, whole bool) (rend
 		err = s.caller.PatchElements(ctx, render.AgentsSelector, render.AgentsPanel(l, filter), publisher.WithRegion(render.AgentsRegion), publisher.WithMode("inner"))
 	case list != sent:
 		err = s.caller.PatchElements(ctx, "#"+render.AgentsListID, list, publisher.WithMode("outer"))
+		c.viewPanel(ctx, s, l, err)
 	}
 	s.mu.Lock()
 	switch {
@@ -258,6 +264,30 @@ func (c *Console) renderPanel(ctx context.Context, s *session, whole bool) (rend
 		return l, err
 	}
 	return l, c.sendBadge(ctx, s, whole)
+}
+
+// viewPanel carries a list change as a view. The shell draws no outer view
+// of #ha-list (its outer targets are the confirm bar and the error line), so
+// the view is the whole panel, inner; the Find field is the page's own (the
+// shell keeps its text and focus), so it carries no filter.
+func (c *Console) viewPanel(ctx context.Context, s *session, l render.AgentsList, patchErr error) {
+	col := collectorOf(ctx)
+	if col == nil {
+		return
+	}
+	html := render.AgentsPanel(l, "")
+	if col.late != nil {
+		if patchErr != nil {
+			if tree, err := render.Tree(html); err == nil {
+				s.addLate(View{Target: targetAgents, Mode: "inner", Tree: render.FitTree(tree, render.MaxViewNodes)})
+			}
+		}
+		return
+	}
+	col.add(targetAgents, "inner", html)
+	s.mu.Lock()
+	s.feedAgents = html
+	s.mu.Unlock()
 }
 
 // pushPanel re-renders the panel's list now, when the panel is open (after
@@ -375,17 +405,18 @@ func (c *Console) panelRun(s *session, p *panelLoop, sub <-chan struct{}, unsub 
 
 // agentsFeed answers a pull: the panel as the watcher last knew it, whole,
 // as a view and without a patch, when it changed since the last one this
-// page was given. It starts no live loop: the page asks again.
+// page was given. (The four fixed targets of the shell have no view of the
+// list alone, so a change replaces the panel; the shell keeps the Find
+// text and focus across it.) It starts no live loop: the page asks again.
 func (c *Console) agentsFeed(ctx context.Context, s *session) (map[string]any, *Fault) {
 	col := collectorOf(ctx)
-	s.mu.Lock()
-	filter := s.panelFilter
-	s.mu.Unlock()
 	l := c.panelList(ctx, s)
 	if l.Error != "" {
 		return nil, &Fault{Code: unavailable, Message: l.Error}
 	}
-	html := render.AgentsPanel(l, filter)
+	// No filter: the Find field is the page's, and a feed that put the last
+	// "agents" call's filter back would overwrite what the person typed.
+	html := render.AgentsPanel(l, "")
 	s.mu.Lock()
 	same := s.feedAgents == html
 	s.feedAgents = html

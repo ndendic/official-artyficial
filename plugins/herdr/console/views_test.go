@@ -171,24 +171,27 @@ func TestFollowFeedReturnsTheThreadWithoutPatching(t *testing.T) {
 	if find(viewsOf(t, res), "console") != nil {
 		t.Error("an unchanged thread was sent again")
 	}
-	// ...until the page says it is new.
-	res, _ = call(t, c, "A:4", Request{Action: "follow", Pane: reviewer.Pane, Feed: true, Fresh: true})
+	// ...until the page says it was hidden and may have missed it.
+	res, _ = call(t, c, "A:4", Request{Action: "follow", Pane: reviewer.Pane, Feed: true, Resync: true})
 	if find(viewsOf(t, res), "console") == nil {
-		t.Error("a fresh page got no thread")
+		t.Error("a resynced page got no thread")
+	}
+	// A page that just loaded shows no console, and a feed opens none (the
+	// Patcher path draws nothing into it either).
+	res, _ = call(t, c, "A:5", Request{Action: "follow", Pane: reviewer.Pane, Feed: true, Fresh: true})
+	if find(viewsOf(t, res), "console") != nil {
+		t.Error("a feed opened a console on a page that just loaded")
 	}
 }
 
 func TestFollowFeedKeepsAnotherViewAndShowsThePendingConfirm(t *testing.T) {
 	c, _, _ := setup(t, stranger)
 	call(t, c, "A:1", Request{Action: "send", Pane: stranger.Pane, Text: "hello there"})
+	// A fresh page lost its confirm bar (Fresh clears the pending send) and
+	// shows no console: the feed draws none.
 	res, _ := call(t, c, "A:2", Request{Action: "follow", Pane: stranger.Pane, Feed: true, Fresh: true})
-	v := find(viewsOf(t, res), "console")
-	if v == nil {
-		t.Fatalf("views = %+v", res["views"])
-	}
-	// A fresh page lost its confirm bar (Fresh clears the pending send).
-	if strings.Contains(treeText(v.Tree), "hello there") {
-		t.Error("a fresh page shows a send that was forgotten")
+	if v := find(viewsOf(t, res), "console"); v != nil {
+		t.Fatalf("a fresh page was given a console: %+v", res["views"])
 	}
 	// The picker the person opened stays: a feed does not draw over it.
 	call(t, c, "A:3", Request{Action: "open"})
@@ -247,28 +250,26 @@ func TestAgentsReturnsThePanelAndFeedDoesNotStartALoop(t *testing.T) {
 	}
 }
 
-// A reply with nothing to draw is what it was: no views, no agent.
-func TestReplyWithoutViewsIsUnchanged(t *testing.T) {
+// The chip rides every reply that names a session, flag or not: a page
+// that reloads follows with {pane, fresh} and no flag, and the chip is what
+// it needs (a page that takes signal patches simply ignores it).
+func TestReplyAlwaysCarriesTheChip(t *testing.T) {
 	c, _, _ := setup(t, reviewer)
 	res, f := call(t, c, "A:1", Request{Action: "follow"})
 	if f != nil {
 		t.Fatal(f)
 	}
 	raw, _ := json.Marshal(res)
-	if string(raw) != `{"following":"","ok":true}` {
+	if string(raw) != `{"agent":null,"following":"","ok":true}` {
 		t.Errorf("reply = %s", raw)
 	}
-	// Following a selected pane on an old page: no views to draw, so no agent key either.
-	call(t, c, "A:2", Request{Action: "select", Pane: reviewer.Pane})
-	res, _ = call(t, c, "A:3", Request{Action: "follow", Pane: reviewer.Pane})
-	raw, _ = json.Marshal(res)
-	if string(raw) != `{"following":"w1:p1","ok":true}` {
-		t.Errorf("reply = %s", raw)
-	}
-	// The same call from a page that draws views names the agent.
-	res, _ = call(t, c, "A:4", Request{Action: "follow", Pane: reviewer.Pane, Views: true})
-	if res["agent"] == nil {
+	// A reloaded page: no flag, no element patch, still the chip.
+	res, _ = call(t, c, "A:3", Request{Action: "follow", Pane: reviewer.Pane, Fresh: true})
+	if res["agent"] == nil || res["following"] != reviewer.Pane {
 		t.Errorf("reply = %v", res)
+	}
+	if _, ok := res["views"]; ok {
+		t.Errorf("a follow that draws nothing carried views: %v", res["views"])
 	}
 }
 

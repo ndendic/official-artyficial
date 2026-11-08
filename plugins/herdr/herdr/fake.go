@@ -3,6 +3,7 @@ package herdr
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 )
@@ -15,6 +16,7 @@ type Fake struct {
 	screens map[string]string
 	spaces  []Workspace
 	nextTab int
+	openErr error
 
 	Prompts []Input // every Prompt, in order
 	Keys    []Input // every SendKeys, in order
@@ -44,6 +46,20 @@ func (f *Fake) Put(a Agent) {
 	f.agents[a.Pane] = a
 }
 
+// Remove deletes an agent (its session ended).
+func (f *Fake) Remove(pane string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	delete(f.agents, pane)
+}
+
+// SetOpenError makes OpenTab fail with err (nil: succeed again).
+func (f *Fake) SetOpenError(err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.openErr = err
+}
+
 // SetScreen sets what Read returns for pane.
 func (f *Fake) SetScreen(pane, text string) {
 	f.mu.Lock()
@@ -65,6 +81,8 @@ func (f *Fake) List(context.Context) ([]Agent, error) {
 	for _, a := range f.agents {
 		out = append(out, a)
 	}
+	// A map has no order: sorted, so two lists of one state are equal.
+	sort.Slice(out, func(i, j int) bool { return out[i].Pane < out[j].Pane })
 	return out, nil
 }
 
@@ -110,6 +128,9 @@ func (f *Fake) Workspaces(context.Context) ([]Workspace, error) {
 func (f *Fake) OpenTab(_ context.Context, label, cwd, tabLabel string) (Opened, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.openErr != nil {
+		return Opened{}, f.openErr
+	}
 	ws := ""
 	for _, w := range f.spaces {
 		if w.Label == label {

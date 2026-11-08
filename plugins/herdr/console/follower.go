@@ -445,7 +445,7 @@ func (f *follower) run() {
 }
 
 func (f *follower) gone() {
-	ctx, cancel := context.WithTimeout(f.c.life, 5*time.Second)
+	ctx, cancel := context.WithTimeout(lateContext(f.c.life, f.s), 5*time.Second)
 	defer cancel()
 	f.s.mu.Lock()
 	if f.s.selected == f.pane {

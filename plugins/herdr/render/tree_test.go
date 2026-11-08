@@ -79,3 +79,92 @@ func TestTreeGoldenConfirm(t *testing.T) {
 	golden(t, "confirm", treeJSON(t, Confirm("w1:p1", "reviewer", "claude", "ship it <now>", nil, true)))
 	golden(t, "confirm-keys", treeJSON(t, Confirm("w1:p1", "reviewer", "claude", "", []string{"1"}, false)))
 }
+
+func TestTreeDropsNamespacedAttributes(t *testing.T) {
+	got := treeJSON(t, `<svg><image xlink:href="/x.png" width="3"></image></svg>`)
+	if strings.Contains(got, "xlink") || strings.Contains(got, `"href"`) || !strings.Contains(got, `"width"`) {
+		t.Errorf("a namespaced attribute reached the tree: %s", got)
+	}
+}
+
+func answerOf(id string, lines int) string {
+	return `<div class="hc-a" id="hc-a-` + id + `">` + strings.Repeat("<p>line</p>", lines) + `</div>`
+}
+
+func TestFitTreeLeavesAFittingTreeAlone(t *testing.T) {
+	tree, _ := Tree(answerOf("1", 5))
+	if got := FitTree(tree, MaxViewNodes); CountNodes(got) != CountNodes(tree) {
+		t.Errorf("a tree that fits changed: %d nodes, was %d", CountNodes(got), CountNodes(tree))
+	}
+}
+
+func TestFitTreeCutsTheLargestAnswerAndKeepsTheRest(t *testing.T) {
+	tree, _ := Tree(`<div id="hc-thread">` + answerOf("small", 3) + answerOf("big", 3000) + `<div id="hc-confirm">keep me</div></div>`)
+	before := CountNodes(tree)
+	got := FitTree(tree, 500)
+	if CountNodes(got) > 500 {
+		t.Fatalf("%d nodes over 500", CountNodes(got))
+	}
+	if CountNodes(tree) != before {
+		t.Error("the argument was changed")
+	}
+	flat := flatText(got)
+	if !strings.Contains(flat, CutNote) || !strings.Contains(flat, "keep me") {
+		t.Errorf("the note or the confirm bar is missing: %s", flat[:min(len(flat), 200)])
+	}
+	small := 0
+	var walk func([]Node)
+	walk = func(ns []Node) {
+		for _, n := range ns {
+			if el, ok := n.(Element); ok {
+				if el.A["id"] == "hc-a-small" {
+					small = CountNodes(el.K)
+				}
+				walk(el.K)
+			}
+		}
+	}
+	walk(got)
+	if small != 6 {
+		t.Errorf("the small answer was cut: %d nodes", small)
+	}
+}
+
+// One long list is one element: the cut goes inside it, so the items go
+// and the list stays.
+func TestFitTreeCutsInsideOneLongList(t *testing.T) {
+	tree, _ := Tree(`<div class="hc-a" id="hc-a-1"><ul>` + strings.Repeat("<li>item</li>", 2000) + `</ul></div>`)
+	got := FitTree(tree, 800)
+	if n := CountNodes(got); n > 800 || n < 100 {
+		t.Errorf("%d nodes", n)
+	}
+	if !strings.Contains(flatText(got), CutNote) {
+		t.Error("no note")
+	}
+}
+
+func TestFitTreeBoundsDepthAndTotal(t *testing.T) {
+	deep := strings.Repeat("<div>", 40) + "x" + strings.Repeat("</div>", 40)
+	tree, _ := Tree(deep)
+	got := FitTree(tree, MaxViewNodes)
+	if d := depthOf(got); d > 24 {
+		t.Errorf("depth %d", d)
+	}
+	flat, _ := Tree(strings.Repeat("<span>a</span>", 5000))
+	if n := CountNodes(FitTree(flat, 1000)); n > 1000 {
+		t.Errorf("%d nodes over 1000", n)
+	}
+}
+
+func flatText(nodes []Node) string {
+	var b strings.Builder
+	for _, n := range nodes {
+		switch v := n.(type) {
+		case string:
+			b.WriteString(v)
+		case Element:
+			b.WriteString(flatText(v.K))
+		}
+	}
+	return b.String()
+}

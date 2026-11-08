@@ -225,14 +225,18 @@ Besides patching, every call answers with what it patched, for a page that core 
 patches (a vouched Page). The patches stay the first path; the reply is the second. Two
 optional input fields tell the Plugin the page draws for itself:
 
-- `views: true`: send nothing to the Caller patch path for this browser session (patches and
-  signals are skipped, the live loops send nothing); the reply carries it all.
+- `views: true`: send nothing to the Caller patch path **for this call** (its patches and
+  signals are skipped); the reply carries it all. The switch is the call's, not the browser
+  session's (every tab of a browser shares one session, and one tab may be vouched while another is not):
+  the follower, the panel loop and the badge keep patching, and a patch no page took is sent again.
 - `feed: true` (implies `views`): a pull. `follow` returns the thread as the follower last
   knew it, `agents` the panel as the watcher last knew it, as views, with no Caller Stream
   and no live loop. A view is sent only when it changed since the last one that page was
   given (the page's `fresh` or `resync`, or any other view it opened, resets that), so a page
-  that asks every few seconds redraws only on change. A feed leaves the picker or the form alone
-  when the person is on one.
+  that asks every few seconds redraws only on change. A feed draws the thread only while the
+  person has it open: not over the picker or the form, not into a console the person dismissed,
+  not into a page that just loaded (the Patcher path draws nothing there either). The feed's panel
+  carries no Find text: the Find field is the page's own.
 
 The reply map gains, when there is something to draw:
 
@@ -242,14 +246,20 @@ The reply map gains, when there is something to draw:
 ```
 
 - `views`: a list in patch order. `target` is `console` (`#pill-console`, mode `inner`), `agents`
-  (`#agents-panel`, `inner`; the list `#ha-list`, `outer`), `confirm` (`#hc-confirm`, `outer`) or `error`
+  (`#agents-panel`, `inner`: a change of the list, such as a new highlight after a select or a close,
+  is the whole panel, because the shell draws no outer view of `#ha-list`), `confirm` (`#hc-confirm`, `outer`) or `error`
   (`#hc-error`, `outer`). A node is a string (text) or `{"t": tag, "a": {attribute: value}, "k": [children]}`
   (`a` and `k` left out when empty), parsed from the same HTML the patch carries; comments are dropped.
   Patches to anything else (an element inside the thread, a block an agent wrote) are not views.
+  A view is at most 3500 nodes (the shell refuses one over 4000): an answer too long for that is cut
+  at its end, with a line saying so, never the whole console.
 - `agent`: the chip, `{pane, name, kind, status, crew, folder}` as in `pillAgent`, or `null` when the
-  chip clears. Sent by `select`, `teach`, `follow` and `close`.
-- A reply with no view stays as it always was: no `views`, and no `agent` unless the call set
-  `views` or `feed`.
+  chip clears. Sent by `select`, `teach`, `follow` and `close`, flag or not (a reloaded page follows
+  with `{pane, fresh}` and no flag, and the chip is what it needs).
+- A reply with nothing to draw has no `views`.
+- Draws that run outside any call (a started session coming up, a session that ended) go to the
+  Patcher; one no page takes waits in the session and rides the next reply, views first (older) and
+  `agent`. `start` waits up to 8 s for the session, so the usual start answers with the thread.
 - `$herdrBadge` has no reply form yet: a `views` page gets no badge.
 
 ## The Agents panel
