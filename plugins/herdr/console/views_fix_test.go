@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -262,6 +263,55 @@ func TestStartErrorReachesThePage(t *testing.T) {
 	}
 }
 
+// A start whose herdr call fails inside StartWait answers the error view,
+// not "starting": a pill that read "starting" would poll for a session
+// that will never come.
+func TestFailedStartInsideWaitAnswersNotStarting(t *testing.T) {
+	c, h, fc := setup(t)
+	fc.setAbsent(true)
+	h.SetOpenError(errors.New("herdr says no"))
+	res, f := call(t, c, "A:1", Request{Action: "start", Kind: "claude", Cwd: t.TempDir(), Views: true})
+	if f != nil {
+		t.Fatal(f)
+	}
+	if res["view"] == "starting" {
+		t.Errorf("reply view = %v after a failed start", res["view"])
+	}
+	if v := find(viewsOf(t, res), "error"); v == nil || !strings.Contains(treeText(v.Tree), "herdr says no") {
+		t.Errorf("no error view in the reply: %+v", res["views"])
+	}
+	s := sess(c, "A")
+	s.mu.Lock()
+	view := s.view
+	s.mu.Unlock()
+	if view == "starting" {
+		t.Errorf("session view = %q", view)
+	}
+	fres, f := call(t, c, "A:2", Request{Action: "follow", Feed: true})
+	if f != nil {
+		t.Fatal(f)
+	}
+	if fres["view"] == "starting" || len(viewsOf(t, fres)) != 0 {
+		t.Errorf("the feed after the failure = %+v", fres)
+	}
+}
+
+// The unvouched (Patcher) path draws the error and answers as before.
+func TestFailedStartUnvouchedStillPatchesTheError(t *testing.T) {
+	c, h, fc := setup(t)
+	h.SetOpenError(errors.New("herdr says no"))
+	res, f := call(t, c, "A:1", Request{Action: "start", Kind: "claude", Cwd: t.TempDir()})
+	if f != nil {
+		t.Fatal(f)
+	}
+	if res["view"] == "starting" {
+		t.Errorf("reply view = %v", res["view"])
+	}
+	if !strings.Contains(fc.html(), "herdr says no") {
+		t.Errorf("the Patcher never got the error: %s", fc.html())
+	}
+}
+
 // A start slower than the call's wait leaves its end for the next reply.
 func TestSlowStartEndsInTheNextReply(t *testing.T) {
 	c, _, fc := setup(t)
@@ -474,24 +524,54 @@ func (openStream) PatchSignals(context.Context, json.RawMessage, bool) error { r
 
 func setupOpenStream(t *testing.T, agents ...herdr.Agent) (*Console, *herdr.Fake) {
 	t.Helper()
-	ctx, cancel := context.WithCancel(context.Background())
 	h := herdr.NewFake(agents...)
+	return setupOpenStreamOn(t, h), h
+}
+
+// gatedStart holds a fake's Start until the gate opens, so a test decides
+// that the start ends after the call's reply, not by the clock.
+type gatedStart struct {
+	*herdr.Fake
+	gate chan struct{}
+}
+
+func (g gatedStart) Start(ctx context.Context, name, kind, pane string) error {
+	select {
+	case <-g.gate:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	return g.Fake.Start(ctx, name, kind, pane)
+}
+
+func setupOpenStreamOn(t *testing.T, h herdr.Client) *Console {
+	t.Helper()
+	ctx, cancel := context.WithCancel(context.Background())
 	c := New(ctx, Config{Crew: crew, ConsoleWorkspace: "Console", DataDir: t.TempDir(), ClaudeProjects: t.TempDir()}, h, nil,
 		func(ticket string) Patcher { return openStream{(&fakeCallers{}).new(ticket)} })
 	c.Tick = 20 * time.Millisecond
 	t.Cleanup(func() { c.Close(); cancel() })
-	return c, h
+	return c
 }
 
 func TestStartOnAnOpenVouchedStream(t *testing.T) {
-	c, _ := setupOpenStream(t)
+	g := gatedStart{herdr.NewFake(), make(chan struct{})}
+	c := setupOpenStreamOn(t, g)
+	var once sync.Once
+	open := func() { once.Do(func() { close(g.gate) }) }
+	t.Cleanup(open) // runs before the console closes: no start is left waiting
 	c.StartWait = time.Nanosecond
 	res, f := call(t, c, "A:1", Request{Action: "start", Kind: "claude", Cwd: t.TempDir(), Views: true})
 	if f != nil {
 		t.Fatal(f)
 	}
+	// The start is held, so it ends after this reply: nothing of it rode on it.
 	all := viewsOf(t, res)
 	var agent any = res["agent"]
+	if agent != nil {
+		t.Fatalf("the held start already answered a chip: %v", agent)
+	}
+	open()
 	waitFor(t, "the start to end", func() bool {
 		s := sess(c, "A")
 		s.mu.Lock()

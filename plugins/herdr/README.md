@@ -257,6 +257,12 @@ The reply map gains, when there is something to draw:
   chip clears. Sent by `select`, `teach`, `follow` and `close`, flag or not (a reloaded page follows
   with `{pane, fresh}` and no flag, and the chip is what it needs).
 - A reply with nothing to draw has no `views`.
+- A `follow` of a pane that is gone: with `feed` or `views`, and herdr answering `agent_not_found`,
+  it answers `ok`, `following: ""` and `agent: null`, with any late views (the end of the session
+  among them) riding along. Any other herdr error is a fault and keeps the chip and the selection
+  (the next feed asks again). A plain `follow` (no `feed`, no `views`) of a gone pane answers
+  `not_found`.
+- A `start` that fails inside `start`'s wait answers the error view, never `view: "starting"`.
 - Draws that run outside any call (a started session coming up, a session that ended) go to the
   Patcher; one no page takes waits in the session and rides the next reply, views first (older) and
   `agent`. `start` waits up to 8 s for the session, so the usual start answers with the thread.

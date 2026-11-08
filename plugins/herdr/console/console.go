@@ -799,12 +799,24 @@ func (c *Console) crewName(name string) bool {
 	return false
 }
 
+// failStart shows a start's error and ends the "starting" view: the
+// session is not starting any more, so the call that waited for it answers
+// the error, not "starting" (a pill reads that as a reason to keep polling).
+func (c *Console) failStart(ctx context.Context, s *session, msg string) {
+	c.fail(ctx, s, unavailable, msg)
+	s.mu.Lock()
+	if s.view == "starting" {
+		s.view = ""
+	}
+	s.mu.Unlock()
+}
+
 func (c *Console) startAsync(s *session, name, kind, cwd string, pages int32) {
 	ctx, cancel := context.WithTimeout(lateContext(c.life, s, pages), 3*time.Minute)
 	defer cancel()
 	o, err := c.herdr.OpenTab(ctx, c.cfg.ConsoleWorkspace, cwd, name)
 	if err != nil {
-		c.fail(ctx, s, unavailable, "could not open a tab in herdr: "+herdrFault(err).Message)
+		c.failStart(ctx, s, "could not open a tab in herdr: "+herdrFault(err).Message)
 		return
 	}
 	// Record it before the agent starts, so a failed start can still be
@@ -812,7 +824,7 @@ func (c *Console) startAsync(s *session, name, kind, cwd string, pages int32) {
 	c.opened.Put(OpenedSession{Pane: o.Pane, Tab: o.Tab, Workspace: o.Workspace, Name: name, Kind: kind, Cwd: cwd, OpenedAt: c.now(), OpenedBy: s.id})
 	err = c.herdr.Start(ctx, name, kind, o.Pane)
 	if err != nil && herdr.Code(err) != "agent_not_ready" {
-		c.fail(ctx, s, unavailable, "herdr opened "+o.Pane+" but could not start "+kind+": "+herdrFault(err).Message+". Close it from the picker.")
+		c.failStart(ctx, s, "herdr opened "+o.Pane+" but could not start "+kind+": "+herdrFault(err).Message+". Close it from the picker.")
 		return
 	}
 	if c.watch != nil {
