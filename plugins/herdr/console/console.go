@@ -250,8 +250,12 @@ func (c *Console) Handle(ctx context.Context, ticket string, req Request) (map[s
 		agent, hasAgent = newerAgent, true
 	}
 	if hasAgent {
-		if _, ok := res["agent"]; !ok {
+		if cur, ok := res["agent"]; !ok {
 			res["agent"] = agent
+		} else if cur == nil && hasNewer && newerAgent != nil {
+			// The reply clears the chip (its pane is gone), but a session
+			// that started while the call ran has a newer one: it stays.
+			res["agent"] = newerAgent
 		}
 	}
 	return res, f
@@ -951,14 +955,27 @@ func (c *Console) followAction(ctx context.Context, s *session, req Request) (ma
 	}
 	a, err := c.agent(ctx, pane)
 	if err != nil {
+		if herdr.Code(err) != "agent_not_found" {
+			// A herdr that did not answer (timeout, restarting) is not the
+			// end of the session: the selection stays and the next feed
+			// asks again.
+			hf := herdrFault(err)
+			return nil, c.fail(ctx, s, hf.Code, hf.Message)
+		}
 		s.mu.Lock()
 		s.selected = ""
+		fl := s.follow
 		s.mu.Unlock()
 		_ = s.caller.PatchSignals(ctx, json.RawMessage(`{"pillAgent":null}`), false)
 		if req.Feed || req.Views {
 			// A views page (the vouched pill's 2 s feed) reads its late
 			// draws, the end of this session among them, from this reply.
 			// A fault would make Handle put the outbox back, every time.
+			// When the follower has not drawn the end yet, this call draws
+			// it into its own reply (the follower then does not repeat it).
+			if fl != nil && fl.pane == pane {
+				fl.end(ctx)
+			}
 			return map[string]any{"ok": true, "following": "", "agent": nil}, nil
 		}
 		return nil, c.fail(ctx, s, notFound, "the selected session is gone")

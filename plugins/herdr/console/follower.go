@@ -36,6 +36,8 @@ type follower struct {
 	cancel context.CancelFunc
 	wakeCh chan struct{}
 
+	endOnce sync.Once
+
 	mu    sync.Mutex
 	agent herdr.Agent
 	// file is the agent's own transcript (Claude, Codex, Pi), or nil
@@ -495,6 +497,18 @@ func (f *follower) run() {
 func (f *follower) gone() {
 	ctx, cancel := context.WithTimeout(lateContext(f.c.life, f.s, f.pages.Load()), 5*time.Second)
 	defer cancel()
+	f.end(ctx)
+}
+
+// end draws the end of the session through ctx, once: the follower's own
+// round and a feed call that sees the pane gone first both call it, and
+// whichever comes second finds it drawn. Later calls wait for the first.
+func (f *follower) end(ctx context.Context) {
+	f.endOnce.Do(func() { f.draw(ctx) })
+	f.cancel()
+}
+
+func (f *follower) draw(ctx context.Context) {
 	f.s.mu.Lock()
 	if f.s.selected == f.pane {
 		f.s.selected = ""
