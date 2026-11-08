@@ -242,6 +242,7 @@ func (c *Console) Handle(ctx context.Context, ticket string, req Request) (map[s
 	newer, newerAgent, hasNewer := s.takeLate()
 	views := append(older, col.list()...)
 	views = append(views, newer...)
+	views = fitReply(views)
 	if len(views) > 0 {
 		res["views"] = views
 	}

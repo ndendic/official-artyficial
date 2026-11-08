@@ -1,6 +1,7 @@
 package render
 
 import (
+	"encoding/json"
 	"strings"
 
 	"golang.org/x/net/html"
@@ -246,6 +247,73 @@ func prune(nodes []Node, budget *int, depth int) []Node {
 			el.K = nil
 		}
 		out = append(out, el)
+	}
+	return out
+}
+
+// MaxViewBytes is the most JSON one view may hold. Core refuses a reply over
+// 1 MiB whole, and one reply can carry several views, so a view stays well
+// under it: text nodes are unbounded in a node count.
+const MaxViewBytes = 224 << 10
+
+// maxTextRunes is the longest text node FitView keeps when a view is over
+// MaxViewBytes.
+const maxTextRunes = 2000
+
+// FitView is FitTree plus what core's result schema and payload cap need: a
+// top-level node is an element (whitespace between elements is dropped, other
+// top-level text goes into a span), and the view's JSON is at most
+// MaxViewBytes (long text is cut first, then whatever is last in document
+// order). The argument is never changed.
+func FitView(nodes []Node, max int) []Node {
+	nodes = FitTree(nodes, max)
+	out := make([]Node, 0, len(nodes))
+	for _, v := range nodes {
+		if s, ok := v.(string); ok {
+			if strings.TrimSpace(s) == "" {
+				continue
+			}
+			v = Element{T: "span", K: []Node{s}}
+		}
+		out = append(out, v)
+	}
+	for size := jsonSize(out); size > MaxViewBytes; size = jsonSize(out) {
+		if next := cutText(out, maxTextRunes); jsonSize(next) < size {
+			out = next
+			continue
+		}
+		max = CountNodes(out) / 2
+		if max < 1 {
+			return []Node{}
+		}
+		budget := max
+		out = prune(out, &budget, 0)
+	}
+	return out
+}
+
+func jsonSize(nodes []Node) int {
+	b, _ := json.Marshal(nodes)
+	return len(b)
+}
+
+// cutText returns nodes with every text node over n runes cut to n.
+func cutText(nodes []Node, n int) []Node {
+	out := make([]Node, len(nodes))
+	for i, v := range nodes {
+		switch x := v.(type) {
+		case string:
+			if r := []rune(x); len(r) > n {
+				v = string(r[:n]) + "…"
+			}
+		case Element:
+			x.K = cutText(x.K, n)
+			if len(x.K) == 0 {
+				x.K = nil
+			}
+			v = x
+		}
+		out[i] = v
 	}
 	return out
 }

@@ -279,7 +279,7 @@ func (c *Console) viewPanel(ctx context.Context, s *session, l render.AgentsList
 	if col.late != nil {
 		if patchErr != nil || col.lateOnly {
 			if tree, err := render.Tree(html); err == nil {
-				s.addLate(View{Target: targetAgents, Mode: "inner", Tree: render.FitTree(tree, render.MaxViewNodes)})
+				s.addLate(View{Target: targetAgents, Mode: "inner", Tree: render.FitView(tree, render.MaxViewNodes)})
 			}
 		}
 		return

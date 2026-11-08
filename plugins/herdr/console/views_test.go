@@ -285,3 +285,30 @@ func TestCloseClearsTheChipInTheReply(t *testing.T) {
 		t.Errorf("agent = %v (present %v), want null", v, ok)
 	}
 }
+
+func TestFitReplyKeepsTheNewestWithinTheCap(t *testing.T) {
+	mk := func(target string, n int) View {
+		return View{Target: target, Mode: "inner", Tree: []render.Node{render.Element{T: "pre", K: []render.Node{strings.Repeat("x", n)}}}}
+	}
+	vs := []View{mk("console", 200<<10), mk("agents", 200<<10), mk("confirm", 200<<10), mk("error", 200<<10), mk("console", 200<<10)}
+	got := fitReply(vs)
+	b, _ := json.Marshal(got)
+	if len(b) > maxReplyViewBytes || len(got) == 0 || got[len(got)-1].Target != "console" {
+		t.Fatalf("%d views, %d bytes, last %v", len(got), len(b), got[len(got)-1].Target)
+	}
+	if one := []View{mk("console", 10)}; len(fitReply(one)) != 1 {
+		t.Fatal("a single view was dropped")
+	}
+}
+
+// Views built from large output (collector.add fits each) stay a reply core accepts.
+func TestHandleReplyStaysUnderTheCoreCap(t *testing.T) {
+	col := &collector{only: true}
+	for i := 0; i < 6; i++ {
+		col.add("console", "inner", "<div class=\"hc-a\"><pre>"+strings.Repeat("z", 900<<10)+"</pre></div>")
+	}
+	b, _ := json.Marshal(fitReply(col.list()))
+	if len(b) > 1<<20 {
+		t.Fatalf("reply views are %d bytes", len(b))
+	}
+}

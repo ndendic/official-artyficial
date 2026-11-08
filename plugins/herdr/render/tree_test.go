@@ -195,3 +195,30 @@ func TestTreeGoldenForm(t *testing.T) {
 	}
 	golden(t, "form", out)
 }
+
+func TestFitViewTopLevelIsElementsOnly(t *testing.T) {
+	tree, _ := Tree("\n<div>a</div>\n plain <p>b</p>\n")
+	got := FitView(tree, MaxViewNodes)
+	for _, v := range got {
+		if _, ok := v.(Element); !ok {
+			t.Fatalf("top-level %T %v in %v", v, v, got)
+		}
+	}
+	if len(got) != 3 {
+		t.Fatalf("got %d nodes: %v", len(got), got)
+	}
+}
+
+func TestFitViewBoundsBytes(t *testing.T) {
+	big := strings.Repeat("x", 600<<10)
+	tree, _ := Tree("<div class=\"hc-a\"><pre>" + big + "</pre><pre>" + big + "</pre></div>")
+	got := FitView(tree, MaxViewNodes)
+	if n := jsonSize(got); n > MaxViewBytes || n == 0 {
+		t.Fatalf("size %d", n)
+	}
+	many := strings.Repeat("<p>"+strings.Repeat("y", 1500)+"</p>", 600)
+	tree, _ = Tree("<div>" + many + "</div>")
+	if n := jsonSize(FitView(tree, MaxViewNodes)); n > MaxViewBytes || n == 0 {
+		t.Fatalf("many: size %d", n)
+	}
+}

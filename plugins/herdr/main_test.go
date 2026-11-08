@@ -194,34 +194,113 @@ func loadConsoleDescriptor(t *testing.T) manifest.Manifest {
 	return m
 }
 
+// jsonType names the schema type of a Go type; it fails the test for a kind
+// the table does not know, so a new kind needs a line here, not a silent pass.
+func jsonType(t *testing.T, rt reflect.Type) string {
+	t.Helper()
+	switch rt.Kind() {
+	case reflect.String:
+		return "string"
+	case reflect.Bool:
+		return "boolean"
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return "integer"
+	case reflect.Float32, reflect.Float64:
+		return "number"
+	case reflect.Slice, reflect.Array:
+		return "array"
+	case reflect.Map, reflect.Struct:
+		return "object"
+	case reflect.Pointer:
+		return jsonType(t, rt.Elem())
+	}
+	t.Fatalf("no schema type known for Go kind %s", rt.Kind())
+	return ""
+}
+
+// requestFields lists the keys encoding/json decodes into rt: the tag's name,
+// else the Go field name (decodeInput matches it case-insensitively, core
+// matches the schema exactly), through embedded structs without a tag name.
+func requestFields(rt reflect.Type, into map[string]reflect.Type) {
+	for i := 0; i < rt.NumField(); i++ {
+		f := rt.Field(i)
+		tag := f.Tag.Get("json")
+		if tag == "-" {
+			continue
+		}
+		name, _, _ := strings.Cut(tag, ",")
+		if f.Anonymous && name == "" && f.Type.Kind() == reflect.Struct {
+			requestFields(f.Type, into)
+			continue
+		}
+		if !f.IsExported() {
+			continue
+		}
+		if name == "" {
+			name = f.Name
+		}
+		into[name] = f.Type
+	}
+}
+
 // Every field the Plugin decodes from a request is declared by the request
-// schema (core refuses an undeclared key before the Plugin sees it), and the
-// schema declares nothing else.
+// schema (core refuses an undeclared key before the Plugin sees it), with the
+// type, and for an array the element type, the field has; the schema declares
+// nothing else.
 func TestRequestSchemaDeclaresEveryRequestField(t *testing.T) {
 	d := loadConsoleDescriptor(t).Capabilities[0]
-	rt := reflect.TypeOf(console.Request{})
-	fields := map[string]bool{}
-	for i := 0; i < rt.NumField(); i++ {
-		name, _, _ := strings.Cut(rt.Field(i).Tag.Get("json"), ",")
-		if name == "" || name == "-" {
-			continue
-		}
-		fields[name] = true
+	fields := map[string]reflect.Type{}
+	requestFields(reflect.TypeOf(console.Request{}), fields)
+	for name, ft := range fields {
 		prop, ok := d.Request.Properties[name]
 		if !ok {
-			t.Errorf("request schema lacks %q (Request.%s)", name, rt.Field(i).Name)
+			t.Errorf("request schema lacks %q (a Request field)", name)
 			continue
 		}
-		want := map[reflect.Kind]string{reflect.String: "string", reflect.Bool: "boolean", reflect.Slice: "array"}[rt.Field(i).Type.Kind()]
-		if prop.Type != want {
+		if want := jsonType(t, ft); prop.Type != want {
 			t.Errorf("request property %q is %s, the field is %s", name, prop.Type, want)
+		}
+		if ft.Kind() == reflect.Slice || ft.Kind() == reflect.Array {
+			if prop.Items == nil {
+				t.Errorf("request property %q is an array without items", name)
+			} else if want := jsonType(t, ft.Elem()); prop.Items.Type != want {
+				t.Errorf("request property %q has items of %s, the elements are %s", name, prop.Items.Type, want)
+			}
 		}
 	}
 	for name := range d.Request.Properties {
-		if !fields[name] {
+		if _, ok := fields[name]; !ok {
 			t.Errorf("request schema declares %q, which Request does not have", name)
 		}
 	}
+}
+
+// requestFields sees an untagged, empty-named and embedded field, which the
+// schema test above would otherwise skip.
+func TestRequestFieldsSeeEveryDecodedKey(t *testing.T) {
+	type inner struct {
+		Deep int `json:"deep"`
+	}
+	type probe struct {
+		inner
+		Plain  string
+		Empty  string `json:",omitempty"`
+		Named  bool   `json:"named,omitempty"`
+		Hidden string `json:"-"`
+		priv   string
+	}
+	got := map[string]reflect.Type{}
+	requestFields(reflect.TypeOf(probe{}), got)
+	for _, k := range []string{"deep", "Plain", "Empty", "named"} {
+		if got[k] == nil {
+			t.Errorf("requestFields misses %q: %v", k, got)
+		}
+	}
+	if len(got) != 4 {
+		t.Errorf("requestFields = %v", got)
+	}
+	_ = probe{}.priv
 }
 
 // Real replies of Handle fit the result schema, as core checks them.
@@ -238,11 +317,12 @@ func TestRealRepliesFitTheResultSchema(t *testing.T) {
 	t.Cleanup(func() { c.Close(); cancel() })
 
 	var sawViews, sawAgent, sawNullAgent bool
+	replyKeys := map[string]bool{}
 	do := func(label, ticket string, req console.Request) {
 		t.Helper()
 		res, f := c.Handle(ctx, ticket, req)
 		if res == nil {
-			t.Logf("%s: a refusal (%v), no reply to check", label, f)
+			t.Errorf("%s: refused (%v), so no reply was checked", label, f)
 			return
 		}
 		b, err := json.Marshal(res)
@@ -251,6 +331,9 @@ func TestRealRepliesFitTheResultSchema(t *testing.T) {
 		}
 		if err := d.Result.ValidateJSON(b); err != nil {
 			t.Errorf("%s: %v\n%.300s", label, err, b)
+		}
+		for k := range res {
+			replyKeys[k] = true
 		}
 		if _, ok := res["views"]; ok {
 			sawViews = true
@@ -269,7 +352,6 @@ func TestRealRepliesFitTheResultSchema(t *testing.T) {
 	do("plain select", "A:1", console.Request{Action: "select", Pane: reviewer.Pane})
 	do("plain agents", "A:1", console.Request{Action: "agents"})
 	do("first send, confirm", "A:1", console.Request{Action: "send", Pane: stranger.Pane, Text: "hi"})
-	do("keys", "A:1", console.Request{Action: "keys", Pane: reviewer.Pane, Keys: []string{"1"}})
 	do("new form", "A:1", console.Request{Action: "new"})
 	do("dismiss", "A:1", console.Request{Action: "dismiss"})
 	for _, req := range []console.Request{
@@ -289,7 +371,47 @@ func TestRealRepliesFitTheResultSchema(t *testing.T) {
 		do("feed "+req.Action, "F:1", req)
 	}
 	do("follow nothing", "G:1", console.Request{Action: "follow", Feed: true})
-	do("close the followed pane", "F:1", console.Request{Action: "close", Pane: reviewer.Pane, Views: true})
+
+	// A session the console opened: keys, teach and close reach their
+	// success replies only through one.
+	opened := func(ticket string) string {
+		t.Helper()
+		res, f := c.Handle(ctx, ticket, console.Request{Action: "start", Kind: "claude", Cwd: t.TempDir()})
+		if res == nil {
+			t.Fatalf("start: %v", f)
+		}
+		name, _ := res["name"].(string)
+		for end := time.Now().Add(3 * time.Second); time.Now().Before(end); time.Sleep(10 * time.Millisecond) {
+			for _, o := range c.Opened().All() {
+				if _, err := h.Get(ctx, o.Pane); err == nil && o.Name == name {
+					return o.Pane
+				}
+			}
+		}
+		t.Fatal("the started session never appeared")
+		return ""
+	}
+	pane := opened("K:1")
+	do("teach", "K:1", console.Request{Action: "teach", Pane: pane})
+	do("teach, views", "K:2", console.Request{Action: "teach", Pane: opened("K:2"), Views: true})
+	a, _ := h.Get(ctx, pane)
+	a.Status = "blocked"
+	h.Put(a)
+	do("keys", "K:1", console.Request{Action: "keys", Pane: pane, Keys: []string{"1"}})
+	do("keys, views", "K:1", console.Request{Action: "keys", Pane: pane, Keys: []string{"1"}, Views: true})
+	b := stranger
+	b.Status = "blocked"
+	h.Put(b)
+	do("keys, confirm card", "K:3", console.Request{Action: "keys", Pane: stranger.Pane, Keys: []string{"2"}})
+	do("keys, confirmed", "K:3", console.Request{Action: "keys", Pane: stranger.Pane, Keys: []string{"2"}, Confirm: true})
+	b.Status = "idle"
+	h.Put(b)
+	do("send, confirm card", "K:4", console.Request{Action: "send", Pane: stranger.Pane, Text: "hi"})
+	do("send, confirmed", "K:4", console.Request{Action: "send", Pane: stranger.Pane, Text: "hi", Confirm: true})
+	do("send, confirmed, views", "K:5", console.Request{Action: "send", Pane: stranger.Pane, Text: "hi", Confirm: true, Views: true})
+	do("follow the opened pane", "K:6", console.Request{Action: "follow", Pane: pane, Feed: true})
+	do("close the followed pane", "K:6", console.Request{Action: "close", Pane: pane, Views: true})
+	do("close an unfollowed pane", "K:7", console.Request{Action: "close", Pane: opened("K:7")})
 
 	h.SetStartError(errors.New("herdr: no such workspace"))
 	do("failed start", "S:1", console.Request{Action: "start", Kind: "claude", Cwd: t.TempDir()})
@@ -301,7 +423,15 @@ func TestRealRepliesFitTheResultSchema(t *testing.T) {
 		t.Errorf("the replies covered no views (%v) or no agent object (%v)", sawViews, sawAgent)
 	}
 	if !sawNullAgent {
-		t.Log("no reply carried agent:null in this run")
+		t.Error("no real reply carried agent:null")
+	}
+	// Every property the result schema declares is carried by some real
+	// reply (message is the refusal text of an ok:false reply), so a key
+	// dropped from the schema or added to a reply without it fails here.
+	for k := range d.Result.Properties {
+		if !replyKeys[k] {
+			t.Errorf("no real reply carried %q, so the schema's entry for it is unchecked", k)
+		}
 	}
 
 	for _, s := range []string{

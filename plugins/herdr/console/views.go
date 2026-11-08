@@ -112,7 +112,7 @@ func (c *collector) add(target, mode, html string) {
 	if err != nil {
 		return
 	}
-	c.append(View{Target: target, Mode: mode, Tree: render.FitTree(tree, render.MaxViewNodes)})
+	c.append(View{Target: target, Mode: mode, Tree: render.FitView(tree, render.MaxViewNodes)})
 }
 
 func (c *collector) append(v View) {
@@ -204,7 +204,7 @@ func (r *recorder) PatchElements(ctx context.Context, selector, html string, opt
 		if c.lateOnly {
 			if isView {
 				if tree, terr := render.Tree(html); terr == nil {
-					c.late.addLate(View{Target: target, Mode: mode, Tree: render.FitTree(tree, render.MaxViewNodes)})
+					c.late.addLate(View{Target: target, Mode: mode, Tree: render.FitView(tree, render.MaxViewNodes)})
 				}
 			}
 			return nil
@@ -212,7 +212,7 @@ func (r *recorder) PatchElements(ctx context.Context, selector, html string, opt
 		err := r.Patcher.PatchElements(ctx, selector, html, opts...)
 		if isView && (err != nil || c.lateBoth) {
 			if tree, terr := render.Tree(html); terr == nil {
-				c.late.addLate(View{Target: target, Mode: mode, Tree: render.FitTree(tree, render.MaxViewNodes)})
+				c.late.addLate(View{Target: target, Mode: mode, Tree: render.FitView(tree, render.MaxViewNodes)})
 				return nil
 			}
 		}
@@ -248,4 +248,24 @@ func (r *recorder) PatchSignals(ctx context.Context, signals json.RawMessage, on
 		return nil
 	}
 	return r.Patcher.PatchSignals(ctx, signals, onlyIfMissing)
+}
+
+// maxReplyViewBytes is the most JSON a reply's views hold. Core refuses a
+// reply over 1 MiB, and the thread, the agents panel, the confirm bar and
+// views kept for a later call can come together; each view is at most
+// render.MaxViewBytes, the rest of the reply is small.
+const maxReplyViewBytes = 768 << 10
+
+// fitReply drops the oldest views until the rest fit maxReplyViewBytes. A
+// view is whole or absent: a later view of the same target replaces an older
+// one on the page, so the oldest is the one to lose.
+func fitReply(views []View) []View {
+	size := func(vs []View) int {
+		b, _ := json.Marshal(vs)
+		return len(b)
+	}
+	for len(views) > 1 && size(views) > maxReplyViewBytes {
+		views = views[1:]
+	}
+	return views
 }
