@@ -80,6 +80,21 @@ func TestTreeGoldenConfirm(t *testing.T) {
 	golden(t, "confirm-keys", treeJSON(t, Confirm("w1:p1", "reviewer", "claude", "", []string{"1"}, false)))
 }
 
+func TestTreeGoldenAgentsPanel(t *testing.T) {
+	l := AgentsList{Groups: []AgentGroup{
+		{ID: "w1", Title: "Crew", Rows: []AgentRow{
+			{Pane: "w1:p1", Name: "reviewer", Folder: "/home/x/proj", Kind: "claude", Status: "idle", Crew: true},
+			{Pane: "w1:p2", Name: "docs-site", Kind: "codex", Status: "working", Crew: true, Here: true},
+		}},
+		{ID: "w2", Title: "Console", Rows: []AgentRow{
+			{Pane: "w2:p1", Name: "pi-a", Folder: "/home/x/b", Kind: "pi", Status: "blocked", Opened: true},
+			{Pane: "w2:p2", Name: "shell <1>", Kind: "other", Status: "unknown"},
+		}},
+	}}
+	golden(t, "agents", treeJSON(t, AgentsPanel(l, "")))
+	golden(t, "agents-empty", treeJSON(t, AgentsPanel(AgentsList{}, "")))
+}
+
 func TestTreeDropsNamespacedAttributes(t *testing.T) {
 	got := treeJSON(t, `<svg><image xlink:href="/x.png" width="3"></image></svg>`)
 	if strings.Contains(got, "xlink") || strings.Contains(got, `"href"`) || !strings.Contains(got, `"width"`) {

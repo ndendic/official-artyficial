@@ -1,0 +1,454 @@
+[
+ {
+  "t": "div",
+  "a": {
+   "class": "ha-panel"
+  },
+  "k": [
+   {
+    "t": "div",
+    "a": {
+     "class": "ha-tools"
+    },
+    "k": [
+     {
+      "t": "input",
+      "a": {
+       "aria-label": "Find a session or folder",
+       "autocomplete": "off",
+       "class": "ha-find",
+       "data-ha-find": "",
+       "placeholder": "Find",
+       "spellcheck": "false",
+       "type": "search",
+       "value": ""
+      }
+     },
+     {
+      "t": "button",
+      "a": {
+       "class": "ha-new",
+       "data-pill-call": "{\"action\":\"new\"}",
+       "type": "button"
+      },
+      "k": [
+       "＋ New"
+      ]
+     }
+    ]
+   },
+   {
+    "t": "div",
+    "a": {
+     "data-sessions": "4",
+     "id": "ha-list"
+    },
+    "k": [
+     {
+      "t": "details",
+      "a": {
+       "class": "ha-group",
+       "data-ws": "w1",
+       "id": "ha-g-8cb8707b56d7",
+       "open": ""
+      },
+      "k": [
+       {
+        "t": "summary",
+        "a": {
+         "class": "ha-group-h"
+        },
+        "k": [
+         {
+          "t": "span",
+          "k": [
+           "Crew"
+          ]
+         },
+         {
+          "t": "span",
+          "a": {
+           "class": "ha-count"
+          },
+          "k": [
+           "2"
+          ]
+         }
+        ]
+       },
+       {
+        "t": "div",
+        "a": {
+         "class": "ha-row",
+         "data-pane": "w1:p1",
+         "data-pill-call": "{\"action\":\"select\",\"pane\":\"w1:p1\"}",
+         "data-search": "reviewer /home/x/proj /home/x/proj",
+         "role": "button",
+         "tabindex": "0",
+         "title": "/home/x/proj"
+        },
+        "k": [
+         {
+          "t": "span",
+          "a": {
+           "aria-hidden": "true",
+           "class": "ha-ico",
+           "data-kind": "claude"
+          },
+          "k": [
+           {
+            "t": "svg",
+            "a": {
+             "height": "18",
+             "viewBox": "0 0 24 24",
+             "width": "18"
+            },
+            "k": [
+             {
+              "t": "g",
+              "a": {
+               "fill": "none",
+               "stroke": "currentColor",
+               "stroke-linecap": "round",
+               "stroke-width": "2.6"
+              },
+              "k": [
+               {
+                "t": "path",
+                "a": {
+                 "d": "M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4"
+                }
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "t": "span",
+          "a": {
+           "class": "ha-name"
+          },
+          "k": [
+           "reviewer"
+          ]
+         },
+         {
+          "t": "span",
+          "a": {
+           "class": "ha-crew"
+          },
+          "k": [
+           "crew"
+          ]
+         },
+         {
+          "t": "span",
+          "a": {
+           "aria-label": "idle",
+           "class": "ha-dot",
+           "data-status": "idle",
+           "role": "img"
+          }
+         }
+        ]
+       },
+       {
+        "t": "div",
+        "a": {
+         "aria-current": "true",
+         "class": "ha-row",
+         "data-pane": "w1:p2",
+         "data-pill-call": "{\"action\":\"select\",\"pane\":\"w1:p2\"}",
+         "data-search": "docs-site  ",
+         "role": "button",
+         "tabindex": "0",
+         "title": ""
+        },
+        "k": [
+         {
+          "t": "span",
+          "a": {
+           "aria-hidden": "true",
+           "class": "ha-ico",
+           "data-kind": "codex"
+          },
+          "k": [
+           {
+            "t": "svg",
+            "a": {
+             "height": "18",
+             "viewBox": "0 0 24 24",
+             "width": "18"
+            },
+            "k": [
+             {
+              "t": "g",
+              "a": {
+               "fill": "none",
+               "stroke": "currentColor",
+               "stroke-linecap": "round",
+               "stroke-linejoin": "round",
+               "stroke-width": "1.8"
+              },
+              "k": [
+               {
+                "t": "path",
+                "a": {
+                 "d": "M12 2.8 20 7.4v9.2L12 21.2 4 16.6V7.4z"
+                }
+               },
+               {
+                "t": "path",
+                "a": {
+                 "d": "m8.5 10 2.5 2-2.5 2M12.5 14.5h3"
+                }
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "t": "span",
+          "a": {
+           "class": "ha-name"
+          },
+          "k": [
+           "docs-site"
+          ]
+         },
+         {
+          "t": "span",
+          "a": {
+           "class": "ha-crew"
+          },
+          "k": [
+           "crew"
+          ]
+         },
+         {
+          "t": "span",
+          "a": {
+           "class": "ha-here"
+          },
+          "k": [
+           "· in the pill"
+          ]
+         },
+         {
+          "t": "span",
+          "a": {
+           "aria-label": "working",
+           "class": "ha-dot",
+           "data-status": "working",
+           "role": "img"
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "t": "details",
+      "a": {
+       "class": "ha-group",
+       "data-ws": "w2",
+       "id": "ha-g-8cb8407b56d7",
+       "open": ""
+      },
+      "k": [
+       {
+        "t": "summary",
+        "a": {
+         "class": "ha-group-h"
+        },
+        "k": [
+         {
+          "t": "span",
+          "k": [
+           "Console"
+          ]
+         },
+         {
+          "t": "span",
+          "a": {
+           "class": "ha-count"
+          },
+          "k": [
+           "2"
+          ]
+         }
+        ]
+       },
+       {
+        "t": "div",
+        "a": {
+         "class": "ha-row",
+         "data-pane": "w2:p1",
+         "data-pill-call": "{\"action\":\"select\",\"pane\":\"w2:p1\"}",
+         "data-search": "pi-a /home/x/b /home/x/b",
+         "role": "button",
+         "tabindex": "0",
+         "title": "/home/x/b"
+        },
+        "k": [
+         {
+          "t": "span",
+          "a": {
+           "aria-hidden": "true",
+           "class": "ha-ico",
+           "data-kind": "pi"
+          },
+          "k": [
+           {
+            "t": "svg",
+            "a": {
+             "height": "18",
+             "viewBox": "0 0 24 24",
+             "width": "18"
+            },
+            "k": [
+             {
+              "t": "g",
+              "a": {
+               "fill": "none",
+               "stroke": "currentColor",
+               "stroke-linecap": "round",
+               "stroke-width": "2.2"
+              },
+              "k": [
+               {
+                "t": "path",
+                "a": {
+                 "d": "M4.5 7.5h15M9 7.5v11M15.5 7.5v8.5c0 1.6.8 2.5 2.4 2.5"
+                }
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "t": "span",
+          "a": {
+           "class": "ha-name"
+          },
+          "k": [
+           "pi-a"
+          ]
+         },
+         {
+          "t": "span",
+          "a": {
+           "aria-label": "blocked",
+           "class": "ha-dot",
+           "data-status": "blocked",
+           "role": "img"
+          }
+         },
+         {
+          "t": "button",
+          "a": {
+           "aria-label": "Close pi-a",
+           "class": "ha-close",
+           "data-pill-call": "{\"action\":\"close\",\"pane\":\"w2:p1\"}",
+           "title": "Close this session",
+           "type": "button"
+          },
+          "k": [
+           "✕"
+          ]
+         }
+        ]
+       },
+       {
+        "t": "div",
+        "a": {
+         "class": "ha-row",
+         "data-pane": "w2:p2",
+         "data-pill-call": "{\"action\":\"select\",\"pane\":\"w2:p2\"}",
+         "data-search": "shell \u003c1\u003e  ",
+         "role": "button",
+         "tabindex": "0",
+         "title": ""
+        },
+        "k": [
+         {
+          "t": "span",
+          "a": {
+           "aria-hidden": "true",
+           "class": "ha-ico",
+           "data-kind": "other"
+          },
+          "k": [
+           {
+            "t": "svg",
+            "a": {
+             "height": "18",
+             "viewBox": "0 0 24 24",
+             "width": "18"
+            },
+            "k": [
+             {
+              "t": "g",
+              "a": {
+               "fill": "none",
+               "stroke": "currentColor",
+               "stroke-linecap": "round",
+               "stroke-linejoin": "round",
+               "stroke-width": "1.8"
+              },
+              "k": [
+               {
+                "t": "rect",
+                "a": {
+                 "height": "15",
+                 "rx": "3",
+                 "width": "18",
+                 "x": "3",
+                 "y": "4.5"
+                }
+               },
+               {
+                "t": "path",
+                "a": {
+                 "d": "m7.5 10 2.5 2-2.5 2M12.5 14.5h4"
+                }
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "t": "span",
+          "a": {
+           "class": "ha-name"
+          },
+          "k": [
+           "shell \u003c1\u003e"
+          ]
+         },
+         {
+          "t": "span",
+          "a": {
+           "aria-label": "unknown",
+           "class": "ha-dot",
+           "data-status": "unknown",
+           "role": "img"
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+]

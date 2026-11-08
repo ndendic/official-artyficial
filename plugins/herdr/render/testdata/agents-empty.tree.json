@@ -1,0 +1,60 @@
+[
+ {
+  "t": "div",
+  "a": {
+   "class": "ha-panel"
+  },
+  "k": [
+   {
+    "t": "div",
+    "a": {
+     "class": "ha-tools"
+    },
+    "k": [
+     {
+      "t": "input",
+      "a": {
+       "aria-label": "Find a session or folder",
+       "autocomplete": "off",
+       "class": "ha-find",
+       "data-ha-find": "",
+       "placeholder": "Find",
+       "spellcheck": "false",
+       "type": "search",
+       "value": ""
+      }
+     },
+     {
+      "t": "button",
+      "a": {
+       "class": "ha-new",
+       "data-pill-call": "{\"action\":\"new\"}",
+       "type": "button"
+      },
+      "k": [
+       "＋ New"
+      ]
+     }
+    ]
+   },
+   {
+    "t": "div",
+    "a": {
+     "data-sessions": "0",
+     "id": "ha-list"
+    },
+    "k": [
+     {
+      "t": "p",
+      "a": {
+       "class": "ha-empty"
+      },
+      "k": [
+       "No herdr sessions are running."
+      ]
+     }
+    ]
+   }
+  ]
+ }
+]

@@ -1,10 +1,14 @@
 package console
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/ndendic/data-start/sdk/go/publisher"
 
 	"herdr-console/herdr"
 	"herdr-console/render"
@@ -454,5 +458,125 @@ func TestViewsCallDoesNotRecordTheBadgeAsSent(t *testing.T) {
 	}
 	if !strings.Contains(lastBadge(fc), "done") {
 		t.Errorf("the badge never reached the Patcher: %v", badges(fc))
+	}
+}
+
+// ---- late draws on an open vouched Stream (review round 7, B1) ----
+
+// openStream is a Patcher as an open vouched Stream makes it: core accepts
+// every Caller patch (nil), and the sink then drops it.
+type openStream struct{ Patcher }
+
+func (openStream) PatchElements(context.Context, string, string, ...publisher.PatchOption) error {
+	return nil
+}
+func (openStream) PatchSignals(context.Context, json.RawMessage, bool) error { return nil }
+
+func setupOpenStream(t *testing.T, agents ...herdr.Agent) (*Console, *herdr.Fake) {
+	t.Helper()
+	ctx, cancel := context.WithCancel(context.Background())
+	h := herdr.NewFake(agents...)
+	c := New(ctx, Config{Crew: crew, ConsoleWorkspace: "Console", DataDir: t.TempDir(), ClaudeProjects: t.TempDir()}, h, nil,
+		func(ticket string) Patcher { return openStream{(&fakeCallers{}).new(ticket)} })
+	c.Tick = 20 * time.Millisecond
+	t.Cleanup(func() { c.Close(); cancel() })
+	return c, h
+}
+
+func TestStartOnAnOpenVouchedStream(t *testing.T) {
+	c, _ := setupOpenStream(t)
+	c.StartWait = time.Nanosecond
+	res, f := call(t, c, "A:1", Request{Action: "start", Kind: "claude", Cwd: t.TempDir(), Views: true})
+	if f != nil {
+		t.Fatal(f)
+	}
+	all := viewsOf(t, res)
+	var agent any = res["agent"]
+	waitFor(t, "the start to end", func() bool {
+		s := sess(c, "A")
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		return s.hasLateAgent && len(s.lateViews) > 0
+	})
+	res, f = call(t, c, "A:2", Request{Action: "open", Views: true})
+	if f != nil {
+		t.Fatal(f)
+	}
+	all = append(all, viewsOf(t, res)...)
+	if res["agent"] != nil {
+		agent = res["agent"]
+	}
+	if agent == nil {
+		t.Error("no reply carried the chip")
+	}
+	thread := false
+	for _, v := range all {
+		if v.Target == "console" && hasID(v.Tree, "hc-head") {
+			thread = true
+		}
+	}
+	if !thread {
+		t.Errorf("no reply carried the thread: %+v", all)
+	}
+}
+
+func TestEndedSessionOnAnOpenVouchedStream(t *testing.T) {
+	c, h := setupOpenStream(t, reviewer)
+	if _, f := call(t, c, "A:1", Request{Action: "select", Pane: reviewer.Pane, Views: true}); f != nil {
+		t.Fatal(f)
+	}
+	h.Remove(reviewer.Pane)
+	waitFor(t, "the end to be noticed", func() bool {
+		s := sess(c, "A")
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		return s.hasLateAgent
+	})
+	res, f := call(t, c, "A:2", Request{Action: "open", Views: true})
+	if f != nil {
+		t.Fatal(f)
+	}
+	if v, ok := res["agent"]; !ok || v != nil {
+		t.Errorf("agent = %v (present %v), want null", v, ok)
+	}
+	if v := find(viewsOf(t, res), "error"); v == nil || !strings.Contains(treeText(v.Tree), "ended") {
+		t.Errorf("no ended line: %+v", res["views"])
+	}
+}
+
+func TestStartErrorOnAnOpenVouchedStream(t *testing.T) {
+	c, h := setupOpenStream(t)
+	h.SetOpenError(errors.New("herdr says no"))
+	c.StartWait = time.Nanosecond
+	if _, f := call(t, c, "A:1", Request{Action: "start", Kind: "claude", Cwd: t.TempDir(), Views: true}); f != nil {
+		t.Fatal(f)
+	}
+	waitFor(t, "the error", func() bool {
+		s := sess(c, "A")
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		return len(s.lateViews) > 0
+	})
+	res, _ := call(t, c, "A:2", Request{Action: "open", Views: true})
+	if v := find(viewsOf(t, res), "error"); v == nil || !strings.Contains(treeText(v.Tree), "herdr says no") {
+		t.Errorf("the start error is not in the reply: %+v", res["views"])
+	}
+}
+
+// A page that never asked for views keeps the Patcher first: nothing waits
+// in the outbox when the Patcher took the draw.
+func TestLateDrawWithoutViewsStillPatches(t *testing.T) {
+	c, _, fc := setup(t)
+	res, f := call(t, c, "A:1", Request{Action: "start", Kind: "claude", Cwd: t.TempDir()})
+	if f != nil {
+		t.Fatal(f)
+	}
+	_ = res
+	waitFor(t, "the thread patch", func() bool { return strings.Contains(fc.html(), "hc-head") })
+	s := sess(c, "A")
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(s.lateViews) != 0 || s.hasLateAgent {
+		t.Errorf("the outbox holds %d views though the Patcher took them", len(s.lateViews))
 	}
 }

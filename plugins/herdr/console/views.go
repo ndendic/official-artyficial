@@ -68,6 +68,13 @@ type collector struct {
 	// view or chip it could not take waits in the session's outbox for the
 	// next call's reply.
 	late *session
+	// lateOnly: the page this draw belongs to draws views itself (its
+	// opening call asked for views, or its session's page has), so the draw
+	// goes to the outbox and never to the Patcher. On a vouched Page the
+	// Stream is open, core accepts the Caller patch and the sink then drops
+	// it: only the Patcher's error would have filled the outbox, and it
+	// never comes.
+	lateOnly bool
 }
 
 type collectorKey struct{}
@@ -85,8 +92,8 @@ func viewsOnly(ctx context.Context) bool {
 
 // lateContext is ctx for a draw that outlives its call: its patches that
 // no page takes are kept for the session's next reply.
-func lateContext(ctx context.Context, s *session) context.Context {
-	return context.WithValue(ctx, collectorKey{}, &collector{late: s})
+func lateContext(ctx context.Context, s *session, viewsPage bool) context.Context {
+	return context.WithValue(ctx, collectorKey{}, &collector{late: s, lateOnly: viewsPage})
 }
 
 func (c *collector) add(target, mode, html string) {
@@ -183,6 +190,14 @@ func (r *recorder) PatchElements(ctx context.Context, selector, html string, opt
 	}
 	target, mode, isView := viewTarget(selector)
 	if c.late != nil {
+		if c.lateOnly {
+			if isView {
+				if tree, terr := render.Tree(html); terr == nil {
+					c.late.addLate(View{Target: target, Mode: mode, Tree: render.FitTree(tree, render.MaxViewNodes)})
+				}
+			}
+			return nil
+		}
 		err := r.Patcher.PatchElements(ctx, selector, html, opts...)
 		if err != nil && isView {
 			if tree, terr := render.Tree(html); terr == nil {
@@ -207,6 +222,10 @@ func (r *recorder) PatchSignals(ctx context.Context, signals json.RawMessage, on
 		return r.Patcher.PatchSignals(ctx, signals, onlyIfMissing)
 	}
 	if c.late != nil {
+		if c.lateOnly {
+			c.late.addLateSignals(signals)
+			return nil
+		}
 		err := r.Patcher.PatchSignals(ctx, signals, onlyIfMissing)
 		if err != nil {
 			c.late.addLateSignals(signals)

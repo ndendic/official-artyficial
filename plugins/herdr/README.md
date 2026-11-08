@@ -308,6 +308,14 @@ The reply map gains, when there is something to draw:
   changed. A patch no page heard (`delivered: false`) is sent again on a later round; the
   loop ends on ticket expiry or `permission_denied`, and the next `agents` or `follow`
   starts it again.
+- **Late draws and views.** A draw outside any call (the start of a session, a start error, "the
+  session ended", the chip clear) reaches a page that asked for views (`views` or `feed`) through
+  the next reply's `views` and `agent`, never through the Patcher: on a vouched Page core accepts
+  the Caller patch and the Page's sink then drops it, so only the outbox is sure. The start
+  draws by its opening call's switch, the end of a session by whether any call of that browser
+  session asked for views. The choice is outbox only, not outbox plus Patcher, so an unvouched
+  Page is never drawn twice; the other draws (follower, panel loop) still patch. A draw whose
+  page never asked for views keeps Patcher first, the outbox only on a Patcher error.
 - While a session is attached (the chip is shown) the follower also sends `$herdrBadge`
   when any session's status changes, panel open or not.
 - The agent icons (Claude, Codex, Pi, other) are simple one-colour marks drawn for this

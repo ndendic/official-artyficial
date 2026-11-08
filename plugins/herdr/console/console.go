@@ -27,6 +27,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ndendic/data-start/sdk/go/publisher"
@@ -172,7 +173,11 @@ type session struct {
 	// lateViews, lateAgent are what a draw outside any call (the start of a
 	// session, the end of one) made for a page that takes no Patcher
 	// patch: the next reply carries them (takeLate).
-	lateViews    []View
+	lateViews []View
+	// viewsAsked is set once a call of this session asked for views (a
+	// page that draws them itself): later draws outside any call go to the
+	// outbox only (see collector.lateOnly).
+	viewsAsked   atomic.Bool
 	lateAgent    any
 	hasLateAgent bool
 	// feedThread and feedAgents are the last view a feed gave this page
@@ -229,6 +234,9 @@ func (c *Console) Handle(ctx context.Context, ticket string, req Request) (map[s
 	// the Patcher nothing, and no other call of the session is changed by it
 	// (the browser session is shared by every tab).
 	col := &collector{only: req.Views || req.Feed}
+	if col.only {
+		s.viewsAsked.Store(true)
+	}
 	// What an earlier draw outside any call (the start of a session, the
 	// end of one) could not give a page comes first: it is older than this
 	// call's own views. What such a draw made while this call ran (a start
@@ -773,7 +781,7 @@ func (c *Console) start(ctx context.Context, s *session, req Request) (map[strin
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		c.startAsync(s, name, kind, cwd)
+		c.startAsync(s, name, kind, cwd, viewsOnly(ctx))
 	}()
 	select {
 	case <-done:
@@ -795,8 +803,8 @@ func (c *Console) crewName(name string) bool {
 	return false
 }
 
-func (c *Console) startAsync(s *session, name, kind, cwd string) {
-	ctx, cancel := context.WithTimeout(lateContext(c.life, s), 3*time.Minute)
+func (c *Console) startAsync(s *session, name, kind, cwd string, viewsPage bool) {
+	ctx, cancel := context.WithTimeout(lateContext(c.life, s, viewsPage), 3*time.Minute)
 	defer cancel()
 	o, err := c.herdr.OpenTab(ctx, c.cfg.ConsoleWorkspace, cwd, name)
 	if err != nil {
