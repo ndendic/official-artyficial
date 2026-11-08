@@ -580,3 +580,57 @@ func TestLateDrawWithoutViewsStillPatches(t *testing.T) {
 		t.Errorf("the outbox holds %d views though the Patcher took them", len(s.lateViews))
 	}
 }
+
+// ---- one call's switch is its own (review round 8) ----
+
+// A tab that asked for views once does not make the session's other tab
+// (which draws from patches) lose the end of its agent.
+func TestEndedSessionStillPatchesAnUnvouchedTab(t *testing.T) {
+	c, h, fc := setup(t, reviewer)
+	if _, f := call(t, c, "A:1", Request{Action: "open", Views: true}); f != nil {
+		t.Fatal(f)
+	}
+	if _, f := call(t, c, "A:2", Request{Action: "select", Pane: reviewer.Pane}); f != nil {
+		t.Fatal(f)
+	}
+	fc.reset()
+	h.Remove(reviewer.Pane)
+	waitFor(t, "the end reaching the Patcher", func() bool {
+		return strings.Contains(fc.html(), "ended") && strings.Contains(fc.html(), `"pillAgent":null`)
+	})
+}
+
+// A session started from a views page: the open panel's new row reaches
+// that page's next reply, and the panel loop does not take it as heard.
+func TestStartedSessionReachesAnOpenPanelOfAViewsPage(t *testing.T) {
+	c, _, _ := setup(t, reviewer)
+	c.StartWait = 2 * time.Second
+	if _, f := call(t, c, "A:2", Request{Action: "agents"}); f != nil {
+		t.Fatal(f)
+	}
+	res, f := call(t, c, "A:1", Request{Action: "start", Kind: "claude", Name: "newbie", Cwd: t.TempDir(), Views: true})
+	if f != nil {
+		t.Fatal(f)
+	}
+	assertDrawable(t, res)
+	v := find(viewsOf(t, res), "agents")
+	if v == nil || !strings.Contains(treeText(v.Tree), "newbie") {
+		t.Fatalf("the reply has no panel with the new session: %+v", res["views"])
+	}
+}
+
+// The badge a late draw could not send is not recorded as heard.
+func TestLateBadgeIsNotRecordedAsHeard(t *testing.T) {
+	c, _, fc := setup(t, reviewer)
+	s := c.session("A")
+	ctx := lateContext(context.Background(), s, true)
+	if err := c.sendBadge(ctx, s, true); err != nil {
+		t.Fatal(err)
+	}
+	s.mu.Lock()
+	known := s.badgeKnown
+	s.mu.Unlock()
+	if known || len(badges(fc)) != 0 {
+		t.Errorf("a late views draw recorded the badge as sent (known %v)", known)
+	}
+}

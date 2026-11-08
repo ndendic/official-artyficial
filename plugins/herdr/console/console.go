@@ -27,7 +27,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/ndendic/data-start/sdk/go/publisher"
@@ -173,11 +172,7 @@ type session struct {
 	// lateViews, lateAgent are what a draw outside any call (the start of a
 	// session, the end of one) made for a page that takes no Patcher
 	// patch: the next reply carries them (takeLate).
-	lateViews []View
-	// viewsAsked is set once a call of this session asked for views (a
-	// page that draws them itself): later draws outside any call go to the
-	// outbox only (see collector.lateOnly).
-	viewsAsked   atomic.Bool
+	lateViews    []View
 	lateAgent    any
 	hasLateAgent bool
 	// feedThread and feedAgents are the last view a feed gave this page
@@ -234,9 +229,6 @@ func (c *Console) Handle(ctx context.Context, ticket string, req Request) (map[s
 	// the Patcher nothing, and no other call of the session is changed by it
 	// (the browser session is shared by every tab).
 	col := &collector{only: req.Views || req.Feed}
-	if col.only {
-		s.viewsAsked.Store(true)
-	}
 	// What an earlier draw outside any call (the start of a session, the
 	// end of one) could not give a page comes first: it is older than this
 	// call's own views. What such a draw made while this call ran (a start
@@ -501,7 +493,7 @@ func (c *Console) selectPane(ctx context.Context, s *session, pane string) (map[
 	if err := s.caller.PatchSignals(ctx, c.pillAgent(a), false); err != nil {
 		return nil, patchFault(err)
 	}
-	f := c.ensureFollower(s, a)
+	f := c.followFor(ctx, s, a, false)
 	if err := c.showThread(ctx, s, f); err != nil {
 		return nil, patchFault(err)
 	}
@@ -567,7 +559,7 @@ func (c *Console) send(ctx context.Context, s *session, req Request) (map[string
 	if err != nil {
 		return nil, c.fail(ctx, s, notFound, herdrFault(err).Message)
 	}
-	f := c.ensureFollower(s, a)
+	f := c.followFor(ctx, s, a, false)
 	s.mu.Lock()
 	if s.view != "thread" {
 		s.mu.Unlock()
@@ -639,7 +631,7 @@ func (c *Console) keys(ctx context.Context, s *session, req Request) (map[string
 	if c.NeedsConfirm(a) && !confirmed {
 		s.pending = &pending{pane: a.Pane, keys: append([]string(nil), req.Keys...)}
 		s.mu.Unlock()
-		if err := c.showConfirm(ctx, s, c.ensureFollower(s, a), render.Confirm(a.Pane, a.Label(), a.Kind, "", req.Keys, c.IsCrew(a))); err != nil {
+		if err := c.showConfirm(ctx, s, c.followFor(ctx, s, a, false), render.Confirm(a.Pane, a.Label(), a.Kind, "", req.Keys, c.IsCrew(a))); err != nil {
 			return nil, patchFault(err)
 		}
 		return map[string]any{"ok": true, "view": "confirm", "sent": false}, nil
@@ -965,7 +957,7 @@ func (c *Console) followAction(ctx context.Context, s *session, req Request) (ma
 		_ = s.caller.PatchSignals(ctx, json.RawMessage(`{"pillAgent":null}`), false)
 		return nil, c.fail(ctx, s, notFound, "the selected session is gone")
 	}
-	f := c.ensureFollower(s, a)
+	f := c.followFor(ctx, s, a, req.Feed)
 	if req.Feed {
 		c.feedThreadView(ctx, s, f)
 		return map[string]any{"ok": true, "following": pane, "agent": c.agentInfo(a)}, nil

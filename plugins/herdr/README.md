@@ -312,8 +312,10 @@ The reply map gains, when there is something to draw:
   session ended", the chip clear) reaches a page that asked for views (`views` or `feed`) through
   the next reply's `views` and `agent`, never through the Patcher: on a vouched Page core accepts
   the Caller patch and the Page's sink then drops it, so only the outbox is sure. The start
-  draws by its opening call's switch, the end of a session by whether any call of that browser
-  session asked for views. The choice is outbox only, not outbox plus Patcher, so an unvouched
+  draws by its opening call's switch, the end of a session by the switch of the call that last
+  picked the pane (a feed only says so while no pick has), never by the browser session's.
+  In that mode the panel's rows go to the outbox as the whole panel and the badge is not
+  recorded as heard. The choice is outbox only, not outbox plus Patcher, so an unvouched
   Page is never drawn twice; the other draws (follower, panel loop) still patch. A draw whose
   page never asked for views keeps Patcher first, the outbox only on a Patcher error.
 - While a session is attached (the chip is shown) the follower also sends `$herdrBadge`

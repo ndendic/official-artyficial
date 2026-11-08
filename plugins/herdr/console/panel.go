@@ -78,7 +78,7 @@ func badgeSignal(b string) json.RawMessage {
 // session's page heard (always when force). A send no page heard is not
 // counted, so the next call sends it again.
 func (c *Console) sendBadge(ctx context.Context, s *session, force bool) error {
-	if viewsOnly(ctx) {
+	if c := collectorOf(ctx); c != nil && (c.only || c.lateOnly) {
 		// This call sends no patch, so nothing was heard: it is not
 		// recorded, and the next round of the live loop sends it.
 		return nil
@@ -277,7 +277,7 @@ func (c *Console) viewPanel(ctx context.Context, s *session, l render.AgentsList
 	}
 	html := render.AgentsPanel(l, "")
 	if col.late != nil {
-		if patchErr != nil {
+		if patchErr != nil || col.lateOnly {
 			if tree, err := render.Tree(html); err == nil {
 				s.addLate(View{Target: targetAgents, Mode: "inner", Tree: render.FitTree(tree, render.MaxViewNodes)})
 			}

@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ndendic/data-start/sdk/go/publisher"
@@ -61,11 +62,38 @@ type follower struct {
 	// again (a send no page heard).
 	whole bool
 	pill  bool
+	// viewsPage is whether the call that last picked this pane draws views
+	// itself (pageViews) or takes Patcher patches (pagePatches); a feed
+	// call only says so while no pick has. It is that call's, not the
+	// browser session's: one tab may be vouched while another is not.
+	viewsPage atomic.Int32
 
 	expectText string
 	expectAt   time.Time
 	expectN    int
 	lastScreen time.Time
+}
+
+const (
+	pageUnknown = iota
+	pageViews
+	pagePatches
+)
+
+// followFor is ensureFollower for the call that made ctx, which remembers
+// whether that call's page draws views (a feed does not overwrite what a
+// pick said).
+func (c *Console) followFor(ctx context.Context, s *session, a herdr.Agent, feed bool) *follower {
+	f := c.ensureFollower(s, a)
+	switch {
+	case !viewsOnly(ctx):
+		f.viewsPage.Store(pagePatches)
+	case feed:
+		f.viewsPage.CompareAndSwap(pageUnknown, pageViews)
+	default:
+		f.viewsPage.Store(pageViews)
+	}
+	return f
 }
 
 // ensureFollower returns the follower of s for a, starting one (and
@@ -445,7 +473,7 @@ func (f *follower) run() {
 }
 
 func (f *follower) gone() {
-	ctx, cancel := context.WithTimeout(lateContext(f.c.life, f.s, f.s.viewsAsked.Load()), 5*time.Second)
+	ctx, cancel := context.WithTimeout(lateContext(f.c.life, f.s, f.viewsPage.Load() == pageViews), 5*time.Second)
 	defer cancel()
 	f.s.mu.Lock()
 	if f.s.selected == f.pane {
