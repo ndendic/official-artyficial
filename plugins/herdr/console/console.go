@@ -955,6 +955,12 @@ func (c *Console) followAction(ctx context.Context, s *session, req Request) (ma
 		s.selected = ""
 		s.mu.Unlock()
 		_ = s.caller.PatchSignals(ctx, json.RawMessage(`{"pillAgent":null}`), false)
+		if req.Feed || req.Views {
+			// A views page (the vouched pill's 2 s feed) reads its late
+			// draws, the end of this session among them, from this reply.
+			// A fault would make Handle put the outbox back, every time.
+			return map[string]any{"ok": true, "following": "", "agent": nil}, nil
+		}
 		return nil, c.fail(ctx, s, notFound, "the selected session is gone")
 	}
 	f := c.followFor(ctx, s, a, req.Feed)

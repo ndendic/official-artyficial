@@ -120,6 +120,16 @@ func TestPiTranscript(t *testing.T) {
 	waitLong(t, "both blocks", func() bool {
 		return applied(fc, `{"piSays":"ok"}`) == 1 && applied(fc, `{"piSays":"two"}`) == 1
 	})
+	// The elements patch lands after the signals the wait above reads.
+	waitLong(t, "the thread in the elements patch", func() bool {
+		h := fc.html()
+		for _, want := range []string{"The command completed successfully.", "Blue evokes calm skies", "✓ patch-signals"} {
+			if !strings.Contains(h, want) {
+				return false
+			}
+		}
+		return true
+	})
 	html := fc.html()
 	for _, want := range []string{"The command completed successfully.", "Blue evokes calm skies", "✓ patch-signals"} {
 		if !strings.Contains(html, want) {
