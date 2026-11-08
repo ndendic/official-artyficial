@@ -2,7 +2,9 @@ package render
 
 import (
 	"encoding/json"
+	"sort"
 	"strings"
+	"unicode/utf8"
 
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
@@ -123,8 +125,57 @@ func FitTree(nodes []Node, max int) []Node {
 		}
 		nodes = next
 	}
-	budget := max
-	return prune(nodes, &budget, 0)
+	return pruneFit(nodes, max)
+}
+
+// pruneFit is prune with the foot spared: the confirm bar, the dialog card,
+// the error slot and the elements that hold them are kept whole and only
+// charged up front, so what goes is the rest, last in document order first.
+func pruneFit(nodes []Node, max int) []Node {
+	reserve := 0
+	if hasFoot(nodes) {
+		reserve = CountNodes(keepFoot(nodes))
+	}
+	budget := max - reserve
+	if reserve == 0 || budget < 0 {
+		budget = max
+		reserve = 0
+	}
+	return pruneKeep(nodes, &budget, 0, reserve > 0)
+}
+
+func pruneKeep(nodes []Node, budget *int, depth int, spare bool) []Node {
+	out := []Node{}
+	for _, v := range nodes {
+		el, ok := v.(Element)
+		if spare && ok && isFoot(el) {
+			out = append(out, el)
+			continue
+		}
+		if spare && ok && hasFoot(el.K) {
+			el.K = pruneKeep(el.K, budget, depth+1, spare)
+			out = append(out, el)
+			continue
+		}
+		if *budget <= 0 {
+			continue
+		}
+		if !ok {
+			*budget--
+			out = append(out, v)
+			continue
+		}
+		if depth >= maxViewDepth {
+			continue
+		}
+		*budget--
+		el.K = pruneKeep(el.K, budget, depth+1, false)
+		if len(el.K) == 0 {
+			el.K = nil
+		}
+		out = append(out, el)
+	}
+	return out
 }
 
 func isAnswer(el Element) bool {
@@ -224,33 +275,6 @@ func cutTail(ks []Node, want int) ([]Node, int) {
 	return out, removed
 }
 
-// prune keeps the first *budget nodes in document order and nothing deeper
-// than maxViewDepth.
-func prune(nodes []Node, budget *int, depth int) []Node {
-	out := []Node{}
-	for _, v := range nodes {
-		if *budget <= 0 {
-			break
-		}
-		el, ok := v.(Element)
-		if !ok {
-			*budget--
-			out = append(out, v)
-			continue
-		}
-		if depth >= maxViewDepth {
-			continue
-		}
-		*budget--
-		el.K = prune(el.K, budget, depth+1)
-		if len(el.K) == 0 {
-			el.K = nil
-		}
-		out = append(out, el)
-	}
-	return out
-}
-
 // MaxViewBytes is the most JSON one view may hold. Core refuses a reply over
 // 1 MiB whole, and one reply can carry several views, so a view stays well
 // under it: text nodes are unbounded in a node count.
@@ -286,16 +310,26 @@ func FitView(nodes []Node, max int) []Node {
 			out = next
 			continue
 		}
+		if next := capAttrs(out); jsonSize(next) < size {
+			out = next
+			continue
+		}
 		if next := cutBytes(out, size-MaxViewBytes); jsonSize(next) < size {
 			out = next
 			continue
+		}
+		if hasFoot(out) {
+			// never halve the whole view while a foot exists
+			if next := keepFoot(out); jsonSize(next) < size {
+				out = next
+				continue
+			}
 		}
 		max = CountNodes(out) / 2
 		if max < 1 {
 			return []Node{}
 		}
-		budget := max
-		out = prune(out, &budget, 0)
+		out = pruneFit(out, max)
 	}
 	// the note can add nodes to a view that was at its limit
 	if CountNodes(out) > limit || depthOf(out) > maxViewDepth {
@@ -304,32 +338,244 @@ func FitView(nodes []Node, max int) []Node {
 	return out
 }
 
-// largestPath is the child-index path to the element cutBytes cuts inside:
-// the answer (hc-a) with the most JSON, else the largest top-level element;
-// nil when there is no element.
-func largestPath(nodes []Node) []int {
-	var best []int
-	bestN := 0
-	var walk func(ns []Node, path []int)
-	walk = func(ns []Node, path []int) {
-		for i, v := range ns {
+// maxAttrBytes is the longest attribute value FitView keeps when a view is
+// over MaxViewBytes.
+const maxAttrBytes = 2 << 10
+
+// footIDs are the elements a cut must never lose: the confirm bar, the dialog
+// card and the error slot.
+var footIDs = map[string]bool{"hc-confirm": true, "hc-dialog": true, "hc-error": true}
+
+func isFoot(el Element) bool { return footIDs[el.A["id"]] }
+
+func hasFoot(nodes []Node) bool {
+	for _, v := range nodes {
+		if el, ok := v.(Element); ok && (isFoot(el) || hasFoot(el.K)) {
+			return true
+		}
+	}
+	return false
+}
+
+// urlAttr says whether an attribute holds a link: capAttrs drops those when
+// they are over the cap (the shell lets a link through only as http, https,
+// relative or #, so a dropped one is safe), and truncates any other.
+func urlAttr(k string) bool {
+	k = strings.ToLower(k)
+	return strings.Contains(k, "href") || strings.Contains(k, "src") ||
+		k == "action" || k == "formaction" || k == "poster" || k == "cite" || k == "data" || k == "ping"
+}
+
+// capAttrs returns nodes with every attribute value over maxAttrBytes dropped
+// (links) or cut to that size at a rune boundary.
+func capAttrs(nodes []Node) []Node {
+	out := make([]Node, len(nodes))
+	for i, v := range nodes {
+		if el, ok := v.(Element); ok {
+			var a map[string]string
+			for k, val := range el.A {
+				if len(val) <= maxAttrBytes {
+					continue
+				}
+				if a == nil {
+					a = make(map[string]string, len(el.A))
+					for k2, v2 := range el.A {
+						a[k2] = v2
+					}
+				}
+				if urlAttr(k) {
+					delete(a, k)
+					continue
+				}
+				c := maxAttrBytes
+				for c > 0 && !utf8.RuneStart(val[c]) {
+					c--
+				}
+				a[k] = val[:c]
+			}
+			if a != nil {
+				if len(a) == 0 {
+					a = nil
+				}
+				el.A = a
+			}
+			el.K = capAttrs(el.K)
+			if len(el.K) == 0 {
+				el.K = nil
+			}
+			v = el
+		}
+		out[i] = v
+	}
+	return out
+}
+
+func cutNote() Element {
+	return Element{T: "p", A: map[string]string{"class": "hc-wait"}, K: []Node{CutNote}}
+}
+
+// answerRef is one outermost answer: its preorder index and the JSON size of
+// its content, measured once.
+type answerRef struct{ idx, size int }
+
+func answerSizes(nodes []Node) []answerRef {
+	var out []answerRef
+	var walk func(ns []Node)
+	walk = func(ns []Node) {
+		for _, v := range ns {
 			el, ok := v.(Element)
 			if !ok {
 				continue
 			}
-			p := append(append([]int(nil), path...), i)
 			if isAnswer(el) {
-				if n := jsonSize(el.K); n > bestN {
-					best, bestN = p, n
-				}
+				out = append(out, answerRef{len(out), jsonSize(el.K)})
+				continue
 			}
-			walk(el.K, p)
+			walk(el.K)
 		}
 	}
-	walk(nodes, nil)
-	if best != nil {
-		return best
+	walk(nodes)
+	return out
+}
+
+// planCuts spreads excess bytes over the largest answers: the biggest ones
+// are cut down to a common level, so a thread of many answers loses a little
+// from each big one, not one answer at a time. It returns the bytes to remove
+// per answer index (0 = leave alone), or nil when the answers cannot cover
+// excess even cut to the note.
+func planCuts(refs []answerRef, excess, noteSz int) map[int]int {
+	cand := []answerRef{}
+	for _, r := range refs {
+		if r.size > noteSz+16 {
+			cand = append(cand, r)
+		}
 	}
+	sort.Slice(cand, func(i, j int) bool { return cand[i].size > cand[j].size })
+	sum := 0
+	for k := 1; k <= len(cand); k++ {
+		sum += cand[k-1].size
+		next := 0
+		if k < len(cand) {
+			next = cand[k].size
+		}
+		level := (sum - excess - k*noteSz) / k
+		if level < next && k < len(cand) {
+			continue
+		}
+		if level < 0 {
+			break
+		}
+		plan := map[int]int{}
+		for _, r := range cand[:k] {
+			if w := r.size - level + noteSz; w > 0 {
+				plan[r.idx] = w
+			}
+		}
+		return plan
+	}
+	return nil
+}
+
+// cutBytes returns nodes with about excess bytes of JSON cut from the end of
+// the largest answers (else of the largest element) and a CutNote added to
+// each cut. Answers are measured once and cut by plan, not one per pass. When
+// the answers cannot cover excess, their content becomes the note alone. The
+// note sits after the cut element when inside it would pass the depth limit.
+func cutBytes(nodes []Node, excess int) []Node {
+	refs := answerSizes(nodes)
+	noteSz := jsonSize([]Node{cutNote()}) + 1
+	plan := planCuts(refs, excess, noteSz)
+	if len(refs) > 0 {
+		if plan == nil {
+			plan = map[int]int{}
+			for _, r := range refs {
+				if r.size > noteSz+16 {
+					plan[r.idx] = r.size + noteSz
+				}
+			}
+		}
+		if len(plan) > 0 {
+			return cutAnswersBy(nodes, plan)
+		}
+	}
+	path := largestElementPath(nodes)
+	if path == nil {
+		return nodes
+	}
+	want := excess + noteSz
+	var rebuild func(ns []Node, path []int, depth int) []Node
+	rebuild = func(ns []Node, path []int, depth int) []Node {
+		out := append([]Node(nil), ns...)
+		el := out[path[0]].(Element)
+		if len(path) > 1 {
+			el.K = rebuild(el.K, path[1:], depth+1)
+			out[path[0]] = el
+			return out
+		}
+		k, _ := cutTailBytes(el.K, want)
+		if len(k) == 0 {
+			k = nil
+		}
+		el.K = k
+		if depth+1 > maxViewDepth {
+			// the note inside would pass the depth limit: it follows the element
+			out[path[0]] = el
+			return append(out[:path[0]+1], append([]Node{cutNote()}, out[path[0]+1:]...)...)
+		}
+		el.K = append(el.K, cutNote())
+		out[path[0]] = el
+		return out
+	}
+	return rebuild(nodes, path, 1)
+}
+
+// cutAnswersBy cuts plan[i] bytes from the end of the i-th outermost answer.
+func cutAnswersBy(nodes []Node, plan map[int]int) []Node {
+	i := 0
+	var walk func(ns []Node, depth int) []Node
+	walk = func(ns []Node, depth int) []Node {
+		out := make([]Node, 0, len(ns)+1)
+		for _, v := range ns {
+			el, ok := v.(Element)
+			if !ok {
+				out = append(out, v)
+				continue
+			}
+			if isAnswer(el) {
+				cur := i
+				i++
+				if w, cutIt := plan[cur]; cutIt {
+					k, _ := cutTailBytes(el.K, w)
+					if depth+1 > maxViewDepth {
+						el.K = k
+						out = append(out, el, cutNote())
+					} else {
+						el.K = append(k, cutNote())
+						out = append(out, el)
+					}
+					continue
+				}
+				out = append(out, el)
+				continue
+			}
+			el.K = walk(el.K, depth+1)
+			if len(el.K) == 0 {
+				el.K = nil
+			}
+			out = append(out, el)
+		}
+		return out
+	}
+	return walk(nodes, 1)
+}
+
+// largestElementPath is the child-index path to the largest top-level
+// element, descending into a child that holds most of it (a wrapper such as
+// render.View's root keeps the foot controls and the error slot after its
+// body: the cut goes inside the body). Nil when there is no element.
+func largestElementPath(nodes []Node) []int {
+	var best []int
+	bestN := 0
 	for i, v := range nodes {
 		if _, ok := v.(Element); ok {
 			if n := jsonSize(nodes[i : i+1]); n > bestN {
@@ -337,8 +583,6 @@ func largestPath(nodes []Node) []int {
 			}
 		}
 	}
-	// a wrapper (render.View's root) holds the foot controls and the error
-	// slot after its body: cut inside the body, not at the wrapper's end
 	for best != nil {
 		el := elementAt(nodes, best)
 		whole := jsonSize(el.K)
@@ -367,34 +611,30 @@ func elementAt(nodes []Node, path []int) Element {
 	return el
 }
 
-// cutBytes returns nodes with about excess bytes of JSON cut from the end of
-// the largest answer (else the largest top-level element) and CutNote added.
-func cutBytes(nodes []Node, excess int) []Node {
-	path := largestPath(nodes)
-	if path == nil {
-		return nodes
-	}
-	note := Element{T: "p", A: map[string]string{"class": "hc-wait"}, K: []Node{CutNote}}
-	want := excess + jsonSize([]Node{note}) + 1
-	var rebuild func(ns []Node, path []int) []Node
-	rebuild = func(ns []Node, path []int) []Node {
-		out := append([]Node(nil), ns...)
-		el := out[path[0]].(Element)
-		if len(path) == 1 {
-			k, _ := cutTailBytes(el.K, want)
-			el.K = append(k, note)
-		} else {
-			el.K = rebuild(el.K, path[1:])
+// keepFoot returns only the foot elements (confirm bar, dialog card, error
+// slot) and the elements that hold them: the last resort before whole-view
+// halving, which would drop the foot first.
+func keepFoot(nodes []Node) []Node {
+	out := []Node{}
+	for _, v := range nodes {
+		el, ok := v.(Element)
+		if !ok {
+			continue
 		}
-		out[path[0]] = el
-		return out
+		if isFoot(el) {
+			out = append(out, el)
+		} else if hasFoot(el.K) {
+			el.K = keepFoot(el.K)
+			out = append(out, el)
+		}
 	}
-	return rebuild(nodes, path)
+	return out
 }
 
 // cutTailBytes is cutTail by JSON bytes: whole trailing nodes while they fit
-// the want, else the tail inside the last element. It returns what is left
-// and the bytes it removed.
+// the want or while the element's children cannot cover it (its own tag and
+// attributes are the bulk), else the tail inside the last element. It returns
+// what is left and the bytes it removed.
 func cutTailBytes(ks []Node, want int) ([]Node, int) {
 	out := append([]Node(nil), ks...)
 	removed := 0
@@ -402,7 +642,7 @@ func cutTailBytes(ks []Node, want int) ([]Node, int) {
 		last := out[len(out)-1]
 		sz := jsonSize([]Node{last}) - 1 // the node and its comma
 		el, isEl := last.(Element)
-		if sz <= want-removed || !isEl || len(el.K) == 0 {
+		if sz <= want-removed || !isEl || len(el.K) == 0 || jsonSize(el.K) < want-removed {
 			out = out[:len(out)-1]
 			removed += sz
 			continue
@@ -419,9 +659,17 @@ func cutTailBytes(ks []Node, want int) ([]Node, int) {
 	return out, removed
 }
 
+type countWriter int
+
+func (c *countWriter) Write(p []byte) (int, error) { *c += countWriter(len(p)); return len(p), nil }
+
+// jsonSize is len(json.Marshal(nodes)), counted without building the bytes.
 func jsonSize(nodes []Node) int {
-	b, _ := json.Marshal(nodes)
-	return len(b)
+	var c countWriter
+	if err := json.NewEncoder(&c).Encode(nodes); err != nil {
+		return 0
+	}
+	return int(c) - 1 // Encode ends with a newline
 }
 
 // cutText returns nodes with every text node over n runes cut to n.
