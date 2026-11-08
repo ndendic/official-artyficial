@@ -211,6 +211,10 @@ and does nothing.
 | `dismiss` | | cancels a confirm, or empties the console |
 | `agents` | `filter?` | renders the Agents panel whole into the Patch Region `agents` and sends `$herdrBadge`; keeps both live while the panel is open (see below). `filter` (≤ 128) is only the Find field's text, put back as its value |
 
+Every action also takes the optional booleans `views` and `feed` (see "The reply" below); the
+manifest's request and result schemas declare them and the reply keys `views` and `agent`, and a
+test checks both against `console.Request` and real replies.
+
 `follow` also sends `$herdrBadge` when it changed and restarts the panel's live loop while the
 panel is open (`fresh`: the next push renders the panel whole; `resync`: it sends the list again).
 

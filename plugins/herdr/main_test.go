@@ -4,15 +4,20 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ndendic/data-start/api/manifest"
+	"github.com/ndendic/data-start/sdk/go/publisher"
 
 	"herdr-console/console"
+	"herdr-console/herdr"
 )
 
 func TestManifestDecodesAndValidates(t *testing.T) {
@@ -161,5 +166,162 @@ func TestPluginEnvReadsNewNameFirst(t *testing.T) {
 	t.Setenv("DATA_START_PLUGIN_DATA_DIR", "")
 	if got := pluginEnv("DATA_DIR"); got != "" {
 		t.Fatalf("unset: got %q, want empty", got)
+	}
+}
+
+// nopPatcher takes every patch: the replies below are about the reply, not
+// about what reached a page.
+type nopPatcher struct{ id string }
+
+func (nopPatcher) PatchElements(context.Context, string, string, ...publisher.PatchOption) error {
+	return nil
+}
+func (nopPatcher) PatchSignals(context.Context, json.RawMessage, bool) error { return nil }
+func (nopPatcher) Renew(string)                                              {}
+func (p nopPatcher) SessionID() string                                       { return p.id }
+func (nopPatcher) Expires() time.Time                                        { return time.Now().Add(time.Hour) }
+
+func loadConsoleDescriptor(t *testing.T) manifest.Manifest {
+	t.Helper()
+	raw, err := os.ReadFile("manifest.template.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m manifest.Manifest
+	if err := manifest.Decode(raw, &m); err != nil {
+		t.Fatal(err)
+	}
+	return m
+}
+
+// Every field the Plugin decodes from a request is declared by the request
+// schema (core refuses an undeclared key before the Plugin sees it), and the
+// schema declares nothing else.
+func TestRequestSchemaDeclaresEveryRequestField(t *testing.T) {
+	d := loadConsoleDescriptor(t).Capabilities[0]
+	rt := reflect.TypeOf(console.Request{})
+	fields := map[string]bool{}
+	for i := 0; i < rt.NumField(); i++ {
+		name, _, _ := strings.Cut(rt.Field(i).Tag.Get("json"), ",")
+		if name == "" || name == "-" {
+			continue
+		}
+		fields[name] = true
+		prop, ok := d.Request.Properties[name]
+		if !ok {
+			t.Errorf("request schema lacks %q (Request.%s)", name, rt.Field(i).Name)
+			continue
+		}
+		want := map[reflect.Kind]string{reflect.String: "string", reflect.Bool: "boolean", reflect.Slice: "array"}[rt.Field(i).Type.Kind()]
+		if prop.Type != want {
+			t.Errorf("request property %q is %s, the field is %s", name, prop.Type, want)
+		}
+	}
+	for name := range d.Request.Properties {
+		if !fields[name] {
+			t.Errorf("request schema declares %q, which Request does not have", name)
+		}
+	}
+}
+
+// Real replies of Handle fit the result schema, as core checks them.
+func TestRealRepliesFitTheResultSchema(t *testing.T) {
+	d := loadConsoleDescriptor(t).Capabilities[0]
+	reviewer := herdr.Agent{Pane: "w1:p1", Workspace: "w1", Title: "Reviewer", Kind: "claude", Status: "idle", Cwd: "/tmp"}
+	stranger := herdr.Agent{Pane: "w9:p1", Workspace: "w9", Name: "scratch", Kind: "codex", Status: "idle", Cwd: "/tmp"}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	h := herdr.NewFake(reviewer, stranger)
+	c := console.New(ctx, console.Config{Crew: []string{"reviewer"}, ConsoleWorkspace: "Console", DataDir: t.TempDir(), ClaudeProjects: t.TempDir()}, h, nil,
+		func(ticket string) console.Patcher { return nopPatcher{ticket} })
+	c.Tick = 20 * time.Millisecond
+	t.Cleanup(func() { c.Close(); cancel() })
+
+	var sawViews, sawAgent, sawNullAgent bool
+	do := func(label, ticket string, req console.Request) {
+		t.Helper()
+		res, f := c.Handle(ctx, ticket, req)
+		if res == nil {
+			t.Logf("%s: a refusal (%v), no reply to check", label, f)
+			return
+		}
+		b, err := json.Marshal(res)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := d.Result.ValidateJSON(b); err != nil {
+			t.Errorf("%s: %v\n%.300s", label, err, b)
+		}
+		if _, ok := res["views"]; ok {
+			sawViews = true
+		}
+		if a, ok := res["agent"]; ok {
+			if a == nil {
+				sawNullAgent = true
+			} else {
+				sawAgent = true
+			}
+		}
+	}
+
+	do("no ticket", "", console.Request{Action: "open"})
+	do("plain open", "A:1", console.Request{Action: "open"})
+	do("plain select", "A:1", console.Request{Action: "select", Pane: reviewer.Pane})
+	do("plain agents", "A:1", console.Request{Action: "agents"})
+	do("first send, confirm", "A:1", console.Request{Action: "send", Pane: stranger.Pane, Text: "hi"})
+	do("keys", "A:1", console.Request{Action: "keys", Pane: reviewer.Pane, Keys: []string{"1"}})
+	do("new form", "A:1", console.Request{Action: "new"})
+	do("dismiss", "A:1", console.Request{Action: "dismiss"})
+	for _, req := range []console.Request{
+		{Action: "open", Views: true},
+		{Action: "select", Pane: reviewer.Pane, Views: true},
+		{Action: "agents", Views: true},
+		{Action: "send", Pane: stranger.Pane, Text: "hi", Views: true},
+		{Action: "new", Views: true},
+	} {
+		do("views "+req.Action, "V:1", req)
+	}
+	for _, req := range []console.Request{
+		{Action: "follow", Pane: reviewer.Pane, Feed: true},
+		{Action: "follow", Pane: reviewer.Pane, Feed: true, Resync: true},
+		{Action: "agents", Feed: true},
+	} {
+		do("feed "+req.Action, "F:1", req)
+	}
+	do("follow nothing", "G:1", console.Request{Action: "follow", Feed: true})
+	do("close the followed pane", "F:1", console.Request{Action: "close", Pane: reviewer.Pane, Views: true})
+
+	h.SetStartError(errors.New("herdr: no such workspace"))
+	do("failed start", "S:1", console.Request{Action: "start", Kind: "claude", Cwd: t.TempDir()})
+	do("failed start, views", "S:2", console.Request{Action: "start", Kind: "claude", Cwd: t.TempDir(), Views: true})
+	h.SetStartError(nil)
+	do("start", "S:3", console.Request{Action: "start", Kind: "claude", Cwd: t.TempDir(), Views: true})
+
+	if !sawViews || !sawAgent {
+		t.Errorf("the replies covered no views (%v) or no agent object (%v)", sawViews, sawAgent)
+	}
+	if !sawNullAgent {
+		t.Log("no reply carried agent:null in this run")
+	}
+
+	for _, s := range []string{
+		`{"ok":true,"view":"agents","sessions":2,"views":[{"target":"agents","mode":"inner","tree":[{"t":"div","k":["x"]}]}],"agent":null}`,
+		`{"ok":true,"following":"w1:p1","agent":{"pane":"w1:p1","name":"Reviewer","kind":"claude","status":"idle","crew":true,"folder":"/tmp"}}`,
+	} {
+		if err := d.Result.ValidateJSON([]byte(s)); err != nil {
+			t.Errorf("%s: %v", s, err)
+		}
+	}
+	for _, s := range []string{
+		`{"ok":true,"views":[{"target":"nowhere","mode":"inner","tree":[]}]}`,
+		`{"ok":true,"views":[{"target":"console","mode":"sideways","tree":[]}]}`,
+		`{"ok":true,"views":[{"target":"console","mode":"inner","tree":"x"}]}`,
+		`{"ok":true,"views":{"target":"console"}}`,
+		`{"ok":true,"agent":"w1:p1"}`,
+		`{"ok":true,"agent":{"pane":1}}`,
+	} {
+		if err := d.Result.ValidateJSON([]byte(s)); err == nil {
+			t.Errorf("the schema accepts %s", s)
+		}
 	}
 }

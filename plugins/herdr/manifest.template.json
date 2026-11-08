@@ -15,7 +15,7 @@
       "version": "1.0.0",
       "namespace": "artyficial.herdr",
       "description": "Drive herdr sessions (coding agents in a terminal multiplexer) from the pill: pick a session, start one, send it messages, and apply the patch blocks it writes to the caller's page",
-      "use_when": "The pill of a signed-in page calls this with one action per call; the Plugin answers by patching that browser session (the Patch Region console and the signal pillAgent), so call it only from a browser session. Actions: open {filter?} shows the session picker; select {pane} follows a session; send {pane, text} delivers a message, and to a crew session (a name in the configuration key crew) or one the console did not open the first send only shows a confirm bar, which sends {pane, text, confirm: true}; keys {pane, keys} answers a dialog a person chose from the dialog card (only when the session is blocked); new shows the new-session form; start {kind, other_kind?, cwd, name?} opens a session in the herdr workspace Console without focus; close {pane} and teach {pane} work only on sessions the console opened; follow {pane?, fresh?, resync?} renews the ticket, keeps the selected session streaming and sends pillAgent again (fresh: the page just loaded, its console is empty; resync: the page was hidden and is shown again, so the thread is rendered whole); dismiss cancels a confirm or collapses the console; agents {filter?} renders the sidebar's Agents panel (the Patch Region agents: every session grouped by herdr workspace, with live status, the attached one marked) and the signal herdrBadge (blocked, done or null), and keeps both live while the panel is open (the shell calls it again on follow); a row of the panel posts select. Agents change the page by writing patch blocks: a fenced block with info string patch-elements selector=\"#aside\" mode=\"append\" (optional region=\"name\"; mode outer by default, or inner, append, prepend, before, after, replace, remove; selector may be left out when the HTML is one element with an id) and HTML inside, or patch-signals with one JSON object inside. Each block is applied once, when its closing fence arrives, under the page's Accept Rules (no script, no on* attributes, known elements only, 64 KB at most).",
+      "use_when": "The pill of a signed-in page calls this with one action per call; the Plugin answers by patching that browser session (the Patch Region console and the signal pillAgent), so call it only from a browser session. Actions: open {filter?} shows the session picker; select {pane} follows a session; send {pane, text} delivers a message, and to a crew session (a name in the configuration key crew) or one the console did not open the first send only shows a confirm bar, which sends {pane, text, confirm: true}; keys {pane, keys} answers a dialog a person chose from the dialog card (only when the session is blocked); new shows the new-session form; start {kind, other_kind?, cwd, name?} opens a session in the herdr workspace Console without focus; close {pane} and teach {pane} work only on sessions the console opened; follow {pane?, fresh?, resync?} renews the ticket, keeps the selected session streaming and sends pillAgent again (fresh: the page just loaded, its console is empty; resync: the page was hidden and is shown again, so the thread is rendered whole); dismiss cancels a confirm or collapses the console; agents {filter?} renders the sidebar's Agents panel (the Patch Region agents: every session grouped by herdr workspace, with live status, the attached one marked) and the signal herdrBadge (blocked, done or null), and keeps both live while the panel is open (the shell calls it again on follow); a row of the panel posts select. Two flags serve a page that holds no Caller patch route (a vouched Page): views: true sends nothing to the Caller patch path and returns what would have been patched as the reply key views (a list of {target: console|agents|confirm|error, mode: inner|outer, tree: the HTML as {t,a,k} nodes}) with the chip as the reply key agent (an object, or null when it is cleared); feed: true (which implies views) makes follow and agents answer with the current thread or list as views, only when it changed since the last one that page was given. Agents change the page by writing patch blocks: a fenced block with info string patch-elements selector=\"#aside\" mode=\"append\" (optional region=\"name\"; mode outer by default, or inner, append, prepend, before, after, replace, remove; selector may be left out when the HTML is one element with an id) and HTML inside, or patch-signals with one JSON object inside. Each block is applied once, when its closing fence arrives, under the page's Accept Rules (no script, no on* attributes, known elements only, 64 KB at most).",
       "examples": [
         {"title": "Open the session picker", "request": {"action": "open"}, "result": {"ok": true, "view": "picker", "sessions": 3}},
         {"title": "Follow a session", "request": {"action": "select", "pane": "w1:p2"}, "result": {"ok": true, "view": "thread", "pane": "w1:p2", "source": "transcript"}},
@@ -23,6 +23,7 @@
         {"title": "The confirm bar's Send", "request": {"action": "send", "pane": "w1:p1", "text": "Is the docs-site build green?", "confirm": true}, "result": {"ok": true, "view": "thread", "sent": true, "pane": "w1:p1"}},
         {"title": "Start a Claude session in a folder", "request": {"action": "start", "kind": "claude", "cwd": "~/src/notes"}, "result": {"ok": true, "view": "starting", "name": "claude-notes"}},
         {"title": "Open the Agents panel", "request": {"action": "agents"}, "result": {"ok": true, "view": "agents", "sessions": 9}},
+        {"title": "Open the Agents panel on a page that draws views itself", "request": {"action": "agents", "views": true}, "result": {"ok": true, "view": "agents", "sessions": 9, "views": [{"target": "agents", "mode": "inner", "tree": [{"t": "div", "a": {"class": "ha-panel"}, "k": ["..."]}]}]}},
         {"title": "Answer a dialog with the key a person chose", "request": {"action": "keys", "pane": "w2:p1", "keys": ["1"]}, "result": {"ok": true, "sent": true}}
       ],
       "request": {
@@ -39,7 +40,9 @@
           "name": {"type": "string", "maxLength": 32},
           "filter": {"type": "string", "maxLength": 128},
           "fresh": {"type": "boolean"},
-          "resync": {"type": "boolean"}
+          "resync": {"type": "boolean"},
+          "views": {"type": "boolean"},
+          "feed": {"type": "boolean"}
         },
         "required": ["action"],
         "additionalProperties": false
@@ -57,7 +60,33 @@
           "message": {"type": "string"},
           "closed": {"type": "string"},
           "taught": {"type": "boolean"},
-          "following": {"type": "string"}
+          "following": {"type": "string"},
+          "views": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "target": {"type": "string", "enum": ["console", "agents", "confirm", "error"]},
+                "mode": {"type": "string", "enum": ["inner", "outer"]},
+                "tree": {"type": "array", "items": {"type": "object", "additionalProperties": true}}
+              },
+              "required": ["target", "mode", "tree"],
+              "additionalProperties": false
+            }
+          },
+          "agent": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "pane": {"type": "string"},
+              "name": {"type": "string"},
+              "kind": {"type": "string"},
+              "status": {"type": "string"},
+              "crew": {"type": "boolean"},
+              "folder": {"type": "string"}
+            },
+            "additionalProperties": false
+          }
         },
         "required": ["ok"],
         "additionalProperties": false
