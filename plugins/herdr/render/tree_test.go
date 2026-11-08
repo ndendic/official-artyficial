@@ -183,3 +183,15 @@ func flatText(nodes []Node) string {
 	}
 	return b.String()
 }
+
+// The new-session form: the shell's contract test reads this golden to see
+// every field the pill sends (kind, other_kind, cwd, name).
+func TestTreeGoldenForm(t *testing.T) {
+	out := treeJSON(t, Form([]string{"gemini", "opencode"}, []string{"/home/x/proj", "/home/x/b"}, FormValues{Kind: "more", OtherKind: "gemini", Cwd: "/home/x/proj", Name: "mine"}))
+	for _, name := range []string{"kind", "other_kind", "cwd", "name"} {
+		if !strings.Contains(out, `"name": "`+name+`"`) {
+			t.Errorf("the form has no field named %q", name)
+		}
+	}
+	golden(t, "form", out)
+}

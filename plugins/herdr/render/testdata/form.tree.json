@@ -1,0 +1,359 @@
+[
+ {
+  "t": "form",
+  "a": {
+   "autocomplete": "off",
+   "class": "hc-form",
+   "data-pill-form": "start"
+  },
+  "k": [
+   {
+    "t": "fieldset",
+    "a": {
+     "class": "hc-seg"
+    },
+    "k": [
+     {
+      "t": "legend",
+      "k": [
+       "Agent"
+      ]
+     },
+     {
+      "t": "label",
+      "k": [
+       {
+        "t": "input",
+        "a": {
+         "name": "kind",
+         "type": "radio",
+         "value": "claude"
+        }
+       },
+       {
+        "t": "span",
+        "a": {
+         "aria-hidden": "true",
+         "class": "hc-ico",
+         "data-kind": "claude"
+        },
+        "k": [
+         {
+          "t": "svg",
+          "a": {
+           "height": "18",
+           "viewBox": "0 0 24 24",
+           "width": "18"
+          },
+          "k": [
+           {
+            "t": "g",
+            "a": {
+             "fill": "none",
+             "stroke": "currentColor",
+             "stroke-linecap": "round",
+             "stroke-width": "2.6"
+            },
+            "k": [
+             {
+              "t": "path",
+              "a": {
+               "d": "M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4"
+              }
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       "Claude"
+      ]
+     },
+     {
+      "t": "label",
+      "k": [
+       {
+        "t": "input",
+        "a": {
+         "name": "kind",
+         "type": "radio",
+         "value": "pi"
+        }
+       },
+       {
+        "t": "span",
+        "a": {
+         "aria-hidden": "true",
+         "class": "hc-ico",
+         "data-kind": "pi"
+        },
+        "k": [
+         {
+          "t": "svg",
+          "a": {
+           "height": "18",
+           "viewBox": "0 0 24 24",
+           "width": "18"
+          },
+          "k": [
+           {
+            "t": "g",
+            "a": {
+             "fill": "none",
+             "stroke": "currentColor",
+             "stroke-linecap": "round",
+             "stroke-width": "2.2"
+            },
+            "k": [
+             {
+              "t": "path",
+              "a": {
+               "d": "M4.5 7.5h15M9 7.5v11M15.5 7.5v8.5c0 1.6.8 2.5 2.4 2.5"
+              }
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       "Pi"
+      ]
+     },
+     {
+      "t": "label",
+      "k": [
+       {
+        "t": "input",
+        "a": {
+         "name": "kind",
+         "type": "radio",
+         "value": "codex"
+        }
+       },
+       {
+        "t": "span",
+        "a": {
+         "aria-hidden": "true",
+         "class": "hc-ico",
+         "data-kind": "codex"
+        },
+        "k": [
+         {
+          "t": "svg",
+          "a": {
+           "height": "18",
+           "viewBox": "0 0 24 24",
+           "width": "18"
+          },
+          "k": [
+           {
+            "t": "g",
+            "a": {
+             "fill": "none",
+             "stroke": "currentColor",
+             "stroke-linecap": "round",
+             "stroke-linejoin": "round",
+             "stroke-width": "1.8"
+            },
+            "k": [
+             {
+              "t": "path",
+              "a": {
+               "d": "M12 2.8 20 7.4v9.2L12 21.2 4 16.6V7.4z"
+              }
+             },
+             {
+              "t": "path",
+              "a": {
+               "d": "m8.5 10 2.5 2-2.5 2M12.5 14.5h3"
+              }
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       "Codex"
+      ]
+     },
+     {
+      "t": "label",
+      "k": [
+       {
+        "t": "input",
+        "a": {
+         "checked": "",
+         "name": "kind",
+         "type": "radio",
+         "value": "more"
+        }
+       },
+       {
+        "t": "span",
+        "a": {
+         "aria-hidden": "true",
+         "class": "hc-ico",
+         "data-kind": "more"
+        },
+        "k": [
+         {
+          "t": "svg",
+          "a": {
+           "height": "18",
+           "viewBox": "0 0 24 24",
+           "width": "18"
+          },
+          "k": [
+           {
+            "t": "g",
+            "a": {
+             "fill": "none",
+             "stroke": "currentColor",
+             "stroke-linecap": "round",
+             "stroke-width": "1.8"
+            },
+            "k": [
+             {
+              "t": "circle",
+              "a": {
+               "cx": "6",
+               "cy": "12",
+               "r": "1.2"
+              }
+             },
+             {
+              "t": "circle",
+              "a": {
+               "cx": "12",
+               "cy": "12",
+               "r": "1.2"
+              }
+             },
+             {
+              "t": "circle",
+              "a": {
+               "cx": "18",
+               "cy": "12",
+               "r": "1.2"
+              }
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       "More"
+      ]
+     },
+     {
+      "t": "select",
+      "a": {
+       "aria-label": "Other agent",
+       "name": "other_kind"
+      },
+      "k": [
+       {
+        "t": "option",
+        "a": {
+         "selected": "",
+         "value": "gemini"
+        },
+        "k": [
+         "gemini"
+        ]
+       },
+       {
+        "t": "option",
+        "a": {
+         "value": "opencode"
+        },
+        "k": [
+         "opencode"
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "t": "label",
+    "k": [
+     "Folder",
+     {
+      "t": "input",
+      "a": {
+       "list": "hc-cwds",
+       "name": "cwd",
+       "placeholder": "~/src/…",
+       "required": "",
+       "value": "/home/x/proj"
+      }
+     }
+    ]
+   },
+   {
+    "t": "datalist",
+    "a": {
+     "id": "hc-cwds"
+    },
+    "k": [
+     {
+      "t": "option",
+      "a": {
+       "value": "/home/x/proj"
+      }
+     },
+     {
+      "t": "option",
+      "a": {
+       "value": "/home/x/b"
+      }
+     }
+    ]
+   },
+   {
+    "t": "label",
+    "k": [
+     "Name (optional)",
+     {
+      "t": "input",
+      "a": {
+       "name": "name",
+       "pattern": "[a-z][a-z0-9_\\-]{0,31}",
+       "placeholder": "kind-folder",
+       "value": "mine"
+      }
+     }
+    ]
+   },
+   {
+    "t": "div",
+    "k": [
+     {
+      "t": "button",
+      "a": {
+       "data-pill-call": "{\"action\":\"open\"}",
+       "type": "button"
+      },
+      "k": [
+       "Cancel"
+      ]
+     },
+     {
+      "t": "button",
+      "a": {
+       "type": "submit"
+      },
+      "k": [
+       "Start session"
+      ]
+     }
+    ]
+   }
+  ]
+ }
+]

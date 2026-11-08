@@ -75,6 +75,13 @@ type collector struct {
 	// it: only the Patcher's error would have filled the outbox, and it
 	// never comes.
 	lateOnly bool
+	// pages: the kinds of page (pageViews, pagePatches) the draw belongs to.
+	// lateOnly is pageViews alone; both bits, or none known, send the draw
+	// to the Patcher and to the outbox (lateBoth): an unvouched tab takes
+	// the patch, a vouched one the reply, and neither is drawn twice
+	// by the same page.
+	pages    int32
+	lateBoth bool
 }
 
 type collectorKey struct{}
@@ -92,8 +99,12 @@ func viewsOnly(ctx context.Context) bool {
 
 // lateContext is ctx for a draw that outlives its call: its patches that
 // no page takes are kept for the session's next reply.
-func lateContext(ctx context.Context, s *session, viewsPage bool) context.Context {
-	return context.WithValue(ctx, collectorKey{}, &collector{late: s, lateOnly: viewsPage})
+// pages says which kinds of page it belongs to (pagesOf, follower.pages):
+// views alone goes to the outbox only; patches alone keeps the Patcher first
+// (the outbox only on its error); both, or neither known, uses both.
+func lateContext(ctx context.Context, s *session, pages int32) context.Context {
+	return context.WithValue(ctx, collectorKey{}, &collector{late: s, pages: pages,
+		lateOnly: pages == pageViews, lateBoth: pages == 0 || pages == pageViews|pagePatches})
 }
 
 func (c *collector) add(target, mode, html string) {
@@ -199,7 +210,7 @@ func (r *recorder) PatchElements(ctx context.Context, selector, html string, opt
 			return nil
 		}
 		err := r.Patcher.PatchElements(ctx, selector, html, opts...)
-		if err != nil && isView {
+		if isView && (err != nil || c.lateBoth) {
 			if tree, terr := render.Tree(html); terr == nil {
 				c.late.addLate(View{Target: target, Mode: mode, Tree: render.FitTree(tree, render.MaxViewNodes)})
 				return nil
@@ -227,7 +238,7 @@ func (r *recorder) PatchSignals(ctx context.Context, signals json.RawMessage, on
 			return nil
 		}
 		err := r.Patcher.PatchSignals(ctx, signals, onlyIfMissing)
-		if err != nil {
+		if err != nil || c.lateBoth {
 			c.late.addLateSignals(signals)
 			return nil
 		}

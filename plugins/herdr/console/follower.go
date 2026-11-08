@@ -62,11 +62,12 @@ type follower struct {
 	// again (a send no page heard).
 	whole bool
 	pill  bool
-	// viewsPage is whether the call that last picked this pane draws views
-	// itself (pageViews) or takes Patcher patches (pagePatches); a feed
-	// call only says so while no pick has. It is that call's, not the
-	// browser session's: one tab may be vouched while another is not.
-	viewsPage atomic.Int32
+	// pages is which kinds of page have called this follower's pane: a call
+	// that draws views itself (pageViews) or one that takes Patcher patches
+	// (pagePatches), as bits. A browser session is shared by every tab, so
+	// both can be set; a bit is only ever added, so no call can take the
+	// Patcher away from a tab that uses it (see lateContext).
+	pages atomic.Int32
 
 	expectText string
 	expectAt   time.Time
@@ -74,24 +75,38 @@ type follower struct {
 	lastScreen time.Time
 }
 
+// The kinds of page a call can come from (follower.pages, lateContext).
 const (
-	pageUnknown = iota
-	pageViews
-	pagePatches
+	pageViews   = 1 << iota // draws the reply's views itself (a vouched Page)
+	pagePatches             // takes Patcher patches (an unvouched Page)
 )
 
-// followFor is ensureFollower for the call that made ctx, which remembers
-// whether that call's page draws views (a feed does not overwrite what a
-// pick said).
+// pagesOf is the kind of page the call that made ctx comes from. A late
+// collector (the start's own, which picks the new pane) carries the kind of
+// the call that opened it.
+func pagesOf(ctx context.Context) int32 {
+	if c := collectorOf(ctx); c != nil {
+		if c.only {
+			return pageViews
+		}
+		if c.late != nil {
+			return c.pages
+		}
+	}
+	return pagePatches
+}
+
+// followFor is ensureFollower for the call that made ctx, which adds the
+// kind of its page to the follower: a pick, a feed and a start from the pill
+// all say their page draws views, any other call says it takes patches.
 func (c *Console) followFor(ctx context.Context, s *session, a herdr.Agent, feed bool) *follower {
 	f := c.ensureFollower(s, a)
-	switch {
-	case !viewsOnly(ctx):
-		f.viewsPage.Store(pagePatches)
-	case feed:
-		f.viewsPage.CompareAndSwap(pageUnknown, pageViews)
-	default:
-		f.viewsPage.Store(pageViews)
+	bits := pagesOf(ctx)
+	for {
+		old := f.pages.Load()
+		if old&bits == bits || f.pages.CompareAndSwap(old, old|bits) {
+			break
+		}
 	}
 	return f
 }
@@ -473,7 +488,7 @@ func (f *follower) run() {
 }
 
 func (f *follower) gone() {
-	ctx, cancel := context.WithTimeout(lateContext(f.c.life, f.s, f.viewsPage.Load() == pageViews), 5*time.Second)
+	ctx, cancel := context.WithTimeout(lateContext(f.c.life, f.s, f.pages.Load()), 5*time.Second)
 	defer cancel()
 	f.s.mu.Lock()
 	if f.s.selected == f.pane {

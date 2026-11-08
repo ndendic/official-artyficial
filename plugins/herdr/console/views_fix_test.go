@@ -623,7 +623,7 @@ func TestStartedSessionReachesAnOpenPanelOfAViewsPage(t *testing.T) {
 func TestLateBadgeIsNotRecordedAsHeard(t *testing.T) {
 	c, _, fc := setup(t, reviewer)
 	s := c.session("A")
-	ctx := lateContext(context.Background(), s, true)
+	ctx := lateContext(context.Background(), s, pageViews)
 	if err := c.sendBadge(ctx, s, true); err != nil {
 		t.Fatal(err)
 	}

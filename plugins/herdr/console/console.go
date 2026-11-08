@@ -773,7 +773,7 @@ func (c *Console) start(ctx context.Context, s *session, req Request) (map[strin
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		c.startAsync(s, name, kind, cwd, viewsOnly(ctx))
+		c.startAsync(s, name, kind, cwd, pagesOf(ctx))
 	}()
 	select {
 	case <-done:
@@ -795,8 +795,8 @@ func (c *Console) crewName(name string) bool {
 	return false
 }
 
-func (c *Console) startAsync(s *session, name, kind, cwd string, viewsPage bool) {
-	ctx, cancel := context.WithTimeout(lateContext(c.life, s, viewsPage), 3*time.Minute)
+func (c *Console) startAsync(s *session, name, kind, cwd string, pages int32) {
+	ctx, cancel := context.WithTimeout(lateContext(c.life, s, pages), 3*time.Minute)
 	defer cancel()
 	o, err := c.herdr.OpenTab(ctx, c.cfg.ConsoleWorkspace, cwd, name)
 	if err != nil {

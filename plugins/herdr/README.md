@@ -311,13 +311,20 @@ The reply map gains, when there is something to draw:
 - **Late draws and views.** A draw outside any call (the start of a session, a start error, "the
   session ended", the chip clear) reaches a page that asked for views (`views` or `feed`) through
   the next reply's `views` and `agent`, never through the Patcher: on a vouched Page core accepts
-  the Caller patch and the Page's sink then drops it, so only the outbox is sure. The start
-  draws by its opening call's switch, the end of a session by the switch of the call that last
-  picked the pane (a feed only says so while no pick has), never by the browser session's.
-  In that mode the panel's rows go to the outbox as the whole panel and the badge is not
-  recorded as heard. The choice is outbox only, not outbox plus Patcher, so an unvouched
-  Page is never drawn twice; the other draws (follower, panel loop) still patch. A draw whose
-  page never asked for views keeps Patcher first, the outbox only on a Patcher error.
+  the Caller patch and the Page's sink then drops it, so only the outbox is sure. Which kind of
+  page a pane's follower serves is a set of bits, never a switch: every call that picks, feeds or
+  starts adds its own kind (views, or patches) and none removes one. The start's pick counts as
+  the opening call's kind, so a session started from a vouched Page is ended to that Page. A draw
+  for views pages only goes to the outbox; for patch pages only, to the Patcher first (the
+  outbox on its error); when both kinds share the pane (two tabs of one browser session, one
+  vouched, one not) it goes to both, so the unvouched tab is never left without its patch.
+  In views-only mode the panel's rows go to the outbox as the whole panel and the badge is not
+  recorded as heard; the other draws (follower, panel loop) still patch. The pill should ask
+  for views only on a vouched Page.
+- **Known limit: the outbox is per browser session, not per tab.** A reply to any call of that
+  session takes what waits in it, so with two tabs open the other tab's next reply (its feed)
+  can take a late thread or chip. The request carries no tab id to key it by. It never crosses
+  people or Workspaces.
 - While a session is attached (the chip is shown) the follower also sends `$herdrBadge`
   when any session's status changes, panel open or not.
 - The agent icons (Claude, Codex, Pi, other) are simple one-colour marks drawn for this
