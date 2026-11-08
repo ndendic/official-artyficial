@@ -291,3 +291,51 @@ func TestFitViewWrapCountsAgainstTheBudget(t *testing.T) {
 		}
 	}
 }
+
+// A view with no answer is wrapped in one root (render.View); the byte cut goes
+// inside its body, so the foot controls and the error slot stay.
+func TestFitViewByteCutInsideTheViewWrapperKeepsTheFoot(t *testing.T) {
+	var rows strings.Builder
+	for i := 0; i < 300; i++ {
+		rows.WriteString(`<div class="hc-row" data-x="` + strings.Repeat("z", 1000) + `">r</div>`)
+	}
+	tree, _ := Tree(`<div id="hc-view"><div class="hc-picker"><div class="hc-group">` + rows.String() +
+		`</div><button class="hc-new">New session</button></div><div id="hc-error" hidden></div></div>`)
+	got := FitView(tree, MaxViewNodes)
+	if jsonSize(got) > MaxViewBytes {
+		t.Fatalf("size %d", jsonSize(got))
+	}
+	hasErr := false
+	var walk func([]Node)
+	walk = func(ns []Node) {
+		for _, n := range ns {
+			if el, ok := n.(Element); ok {
+				if el.A["id"] == "hc-error" {
+					hasErr = true
+				}
+				walk(el.K)
+			}
+		}
+	}
+	walk(got)
+	flat := flatText(got)
+	if !hasErr || !strings.Contains(flat, "New session") || !strings.Contains(flat, CutNote) {
+		t.Errorf("error slot %v, button %v, note %v", hasErr, strings.Contains(flat, "New session"), strings.Contains(flat, CutNote))
+	}
+}
+
+// The note the byte cut adds does not push the view past the depth limit.
+func TestFitViewByteCutNoteKeepsTheDepthLimit(t *testing.T) {
+	var kids []Node
+	for i := 0; i < 200; i++ {
+		kids = append(kids, strings.Repeat("t", 1900))
+	}
+	var n Node = Element{T: "div", A: map[string]string{"class": "hc-a"}, K: kids}
+	for i := 0; i < 21; i++ {
+		n = Element{T: "div", K: []Node{n}}
+	}
+	got := FitView([]Node{n}, MaxViewNodes)
+	if jsonSize(got) > MaxViewBytes || depthOf(got) > maxViewDepth {
+		t.Errorf("size %d, depth %d", jsonSize(got), depthOf(got))
+	}
+}

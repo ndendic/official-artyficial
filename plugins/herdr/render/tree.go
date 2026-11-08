@@ -298,7 +298,7 @@ func FitView(nodes []Node, max int) []Node {
 		out = prune(out, &budget, 0)
 	}
 	// the note can add nodes to a view that was at its limit
-	if CountNodes(out) > limit {
+	if CountNodes(out) > limit || depthOf(out) > maxViewDepth {
 		out = FitTree(out, limit)
 	}
 	return out
@@ -337,7 +337,34 @@ func largestPath(nodes []Node) []int {
 			}
 		}
 	}
+	// a wrapper (render.View's root) holds the foot controls and the error
+	// slot after its body: cut inside the body, not at the wrapper's end
+	for best != nil {
+		el := elementAt(nodes, best)
+		whole := jsonSize(el.K)
+		next, nextN := -1, 0
+		for i, v := range el.K {
+			if c, ok := v.(Element); ok {
+				if n := jsonSize([]Node{c}); n > nextN {
+					next, nextN = i, n
+				}
+			}
+		}
+		if next < 0 || nextN*2 <= whole {
+			break
+		}
+		best = append(best, next)
+	}
 	return best
+}
+
+func elementAt(nodes []Node, path []int) Element {
+	var el Element
+	for _, i := range path {
+		el = nodes[i].(Element)
+		nodes = el.K
+	}
+	return el
 }
 
 // cutBytes returns nodes with about excess bytes of JSON cut from the end of
