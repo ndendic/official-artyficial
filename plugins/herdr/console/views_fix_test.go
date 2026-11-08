@@ -643,6 +643,28 @@ func TestStartErrorOnAnOpenVouchedStream(t *testing.T) {
 	}
 }
 
+// herdr opens the tab and then rejects the agent start inside StartWait:
+// the reply answers the error, not view "starting".
+func TestStartRejectedAfterTheTabOpened(t *testing.T) {
+	h := herdr.NewFake()
+	h.SetStartError(errors.New("unknown kind"))
+	c := setupOpenStreamOn(t, h)
+	c.StartWait = 5 * time.Second
+	res, f := call(t, c, "A:1", Request{Action: "start", Kind: "claude", Cwd: t.TempDir(), Views: true})
+	if f != nil {
+		t.Fatal(f)
+	}
+	if res["view"] == "starting" {
+		t.Fatalf("a failed start answered view %q", res["view"])
+	}
+	if v := find(viewsOf(t, res), "error"); v == nil || !strings.Contains(treeText(v.Tree), "unknown kind") {
+		t.Errorf("the start error is not in the reply: %+v", res["views"])
+	}
+	if len(h.Started) != 0 {
+		t.Errorf("started %v", h.Started)
+	}
+}
+
 // A page that never asked for views keeps the Patcher first: nothing waits
 // in the outbox when the Patcher took the draw.
 func TestLateDrawWithoutViewsStillPatches(t *testing.T) {

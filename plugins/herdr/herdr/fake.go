@@ -11,12 +11,13 @@ import (
 // Fake is an in-memory herdr for tests. It records every input it is given
 // so a test can assert that nothing reached a pane.
 type Fake struct {
-	mu      sync.Mutex
-	agents  map[string]Agent
-	screens map[string]string
-	spaces  []Workspace
-	nextTab int
-	openErr error
+	mu       sync.Mutex
+	agents   map[string]Agent
+	screens  map[string]string
+	spaces   []Workspace
+	nextTab  int
+	openErr  error
+	startErr error
 
 	Prompts []Input // every Prompt, in order
 	Keys    []Input // every SendKeys, in order
@@ -58,6 +59,13 @@ func (f *Fake) SetOpenError(err error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.openErr = err
+}
+
+// SetStartError makes Start fail with err (nil: succeed again).
+func (f *Fake) SetStartError(err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.startErr = err
 }
 
 // SetScreen sets what Read returns for pane.
@@ -150,6 +158,9 @@ func (f *Fake) OpenTab(_ context.Context, label, cwd, tabLabel string) (Opened, 
 func (f *Fake) Start(_ context.Context, name, kind, pane string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.startErr != nil {
+		return f.startErr
+	}
 	ws, _, _ := strings.Cut(pane, ":")
 	f.agents[pane] = Agent{Pane: pane, Tab: strings.Replace(pane, ":p", ":t", 1), Workspace: ws, Name: name, Kind: kind, Status: "idle"}
 	f.Started = append(f.Started, name)

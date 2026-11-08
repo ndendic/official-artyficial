@@ -262,7 +262,13 @@ The reply map gains, when there is something to draw:
   among them) riding along. Any other herdr error is a fault and keeps the chip and the selection
   (the next feed asks again). A plain `follow` (no `feed`, no `views`) of a gone pane answers
   `not_found`.
-- A `start` that fails inside `start`'s wait answers the error view, never `view: "starting"`.
+- A `start` that fails inside `start`'s wait answers `ok` with `view: ""` (it is no longer starting; this
+  is not the dismiss meaning, the console is not emptied), never `view: "starting"`. No view named
+  `error` is drawn: the error line rides as a `views` entry with target `error` (a page that was
+  starting keeps its `data-view` and gets the line in `#hc-error`). That entry goes through the
+  session's outbox, so the reply of whichever call of the session collects first carries it (usually the
+  start's own; a `follow` feed that lands between the failure and the start's wake-up takes it, and
+  the page still gets it once).
 - Draws that run outside any call (a started session coming up, a session that ended) go to the
   Patcher; one no page takes waits in the session and rides the next reply, views first (older) and
   `agent`. `start` waits up to 8 s for the session, so the usual start answers with the thread.
