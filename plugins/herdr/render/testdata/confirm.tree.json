@@ -1,0 +1,89 @@
+[
+ {
+  "t": "div",
+  "a": {
+   "class": "hc-confirm",
+   "id": "hc-confirm",
+   "role": "alertdialog"
+  },
+  "k": [
+   {
+    "t": "span",
+    "a": {
+     "aria-hidden": "true",
+     "class": "hc-ico",
+     "data-kind": "claude"
+    },
+    "k": [
+     {
+      "t": "svg",
+      "a": {
+       "height": "18",
+       "viewBox": "0 0 24 24",
+       "width": "18"
+      },
+      "k": [
+       {
+        "t": "g",
+        "a": {
+         "fill": "none",
+         "stroke": "currentColor",
+         "stroke-linecap": "round",
+         "stroke-width": "2.6"
+        },
+        "k": [
+         {
+          "t": "path",
+          "a": {
+           "d": "M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4"
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "t": "span",
+    "k": [
+     "Send to ",
+     {
+      "t": "b",
+      "k": [
+       "reviewer"
+      ]
+     },
+     " (crew)? ",
+     {
+      "t": "q",
+      "k": [
+       "ship it \u003cnow\u003e"
+      ]
+     }
+    ]
+   },
+   {
+    "t": "button",
+    "a": {
+     "data-pill-call": "{\"action\":\"dismiss\"}",
+     "type": "button"
+    },
+    "k": [
+     "Cancel"
+    ]
+   },
+   {
+    "t": "button",
+    "a": {
+     "data-pill-call": "{\"action\":\"send\",\"confirm\":true,\"pane\":\"w1:p1\",\"text\":\"ship it \\u003cnow\\u003e\"}",
+     "data-variant": "danger",
+     "type": "button"
+    },
+    "k": [
+     "Send ↵"
+    ]
+   }
+  ]
+ }
+]

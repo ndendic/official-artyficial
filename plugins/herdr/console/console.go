@@ -27,6 +27,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ndendic/data-start/sdk/go/publisher"
@@ -77,6 +78,14 @@ type Request struct {
 	// again: its Stream was closed meanwhile, so patches may be missing.
 	// The thread is rendered whole and pillAgent sent again.
 	Resync bool `json:"resync,omitempty"`
+	// Views marks a page that draws the reply's "views" itself and holds no
+	// Caller patch route (a vouched Page): nothing is sent to the Caller
+	// patch path for its session, the reply carries what would have been.
+	Views bool `json:"views,omitempty"`
+	// Feed marks a pull: "follow" and "agents" answer with the current
+	// thread or list as views, without patching, and send a view only when
+	// it changed since the last one this page was given. It implies Views.
+	Feed bool `json:"feed,omitempty"`
 }
 
 // Fault is a refusal, in the nine codes.
@@ -157,6 +166,13 @@ type pending struct {
 type session struct {
 	id     string
 	caller Patcher
+	// only is set while the page draws views itself (Request.Views or
+	// Feed): the recorder around caller sends the Patcher nothing.
+	only atomic.Bool
+	// feedThread and feedAgents are the last view a feed gave this page
+	// ("" when it holds none), so an unchanged one is not sent again.
+	feedThread string
+	feedAgents string
 	// followMu serializes ensureFollower for this session.
 	followMu sync.Mutex
 
@@ -194,11 +210,33 @@ type session struct {
 
 // Handle runs one action for the browser session that ticket names. With
 // no ticket nothing can be rendered, so it answers a plain result.
+//
+// Every elements patch the call makes is also returned as a view in the
+// reply's "views" key (see View), so a vouched Page can draw them. A reply
+// with no view stays as it was.
 func (c *Console) Handle(ctx context.Context, ticket string, req Request) (map[string]any, *Fault) {
 	if ticket == "" {
 		return map[string]any{"ok": false, "message": "artyficial.herdr.console renders into the browser session that calls it: call it from the pill of a signed-in page"}, nil
 	}
 	s := c.session(ticket)
+	drawn := req.Views || req.Feed
+	s.only.Store(drawn)
+	col := &collector{}
+	res, f := c.dispatch(context.WithValue(ctx, collectorKey{}, col), s, req)
+	if res == nil {
+		return res, f
+	}
+	if views := col.list(); len(views) > 0 {
+		res["views"] = views
+	} else if !drawn {
+		// Nothing to draw and a page that takes Caller patches: the chip
+		// was patched as a signal, the reply is what it always was.
+		delete(res, "agent")
+	}
+	return res, f
+}
+
+func (c *Console) dispatch(ctx context.Context, s *session, req Request) (map[string]any, *Fault) {
 	switch req.Action {
 	case "open":
 		return c.open(ctx, s, req.Filter)
@@ -217,11 +255,11 @@ func (c *Console) Handle(ctx context.Context, ticket string, req Request) (map[s
 	case "teach":
 		return c.teach(ctx, s, req.Pane)
 	case "follow":
-		return c.followAction(ctx, s, req.Pane, req.Fresh, req.Resync)
+		return c.followAction(ctx, s, req)
 	case "dismiss":
 		return c.dismiss(ctx, s)
 	case "agents":
-		return c.agentsAction(ctx, s, req.Filter)
+		return c.agentsAction(ctx, s, req)
 	}
 	return nil, c.fail(ctx, s, invalid, "unknown action "+fmt.Sprintf("%q", req.Action)+": use open, select, send, keys, new, start, close, teach, follow, dismiss or agents")
 }
@@ -236,7 +274,8 @@ func (c *Console) session(ticket string) *session {
 	defer c.mu.Unlock()
 	s := c.sessions[id]
 	if s == nil {
-		s = &session{id: id, caller: probe}
+		s = &session{id: id}
+		s.caller = &recorder{Patcher: probe, viewsOnly: &s.only}
 		c.sessions[id] = s
 	} else {
 		s.caller.Renew(ticket)
@@ -270,6 +309,7 @@ func (c *Console) setView(ctx context.Context, s *session, name, body string) er
 	s.mu.Lock()
 	s.view = name
 	s.confirm = false
+	s.feedThread = ""
 	s.mu.Unlock()
 	return c.region(ctx, s, render.View(name, body))
 }
@@ -389,10 +429,16 @@ func (c *Console) groups(agents []herdr.Agent, spaces []herdr.Workspace, selecte
 }
 
 func (c *Console) pillAgent(a herdr.Agent) json.RawMessage {
-	raw, _ := json.Marshal(map[string]any{"pillAgent": map[string]any{
-		"pane": a.Pane, "name": a.Label(), "kind": kindOf(a.Kind), "status": statusOf(a.Status), "crew": c.IsCrew(a), "folder": a.Cwd,
-	}})
+	raw, _ := json.Marshal(map[string]any{"pillAgent": c.agentInfo(a)})
 	return raw
+}
+
+// agentInfo is the signal pillAgent, and the reply's "agent" (the chip of a
+// page that takes no signal patch).
+func (c *Console) agentInfo(a herdr.Agent) map[string]any {
+	return map[string]any{
+		"pane": a.Pane, "name": a.Label(), "kind": kindOf(a.Kind), "status": statusOf(a.Status), "crew": c.IsCrew(a), "folder": a.Cwd,
+	}
 }
 
 func kindOf(k string) string {
@@ -432,13 +478,14 @@ func (c *Console) selectPane(ctx context.Context, s *session, pane string) (map[
 	}
 	// The Agents panel, when open, moves its highlight to this session.
 	c.pushPanel(ctx, s)
-	return map[string]any{"ok": true, "view": "thread", "pane": a.Pane, "source": f.source()}, nil
+	return map[string]any{"ok": true, "view": "thread", "pane": a.Pane, "source": f.source(), "agent": c.agentInfo(a)}, nil
 }
 
 // showThread renders the whole thread view of the follower's pane.
 func (c *Console) showThread(ctx context.Context, s *session, f *follower) error {
 	s.mu.Lock()
 	s.view = "thread"
+	s.feedThread = ""
 	s.mu.Unlock()
 	return f.renderAll(ctx)
 }
@@ -524,6 +571,18 @@ func (c *Console) send(ctx context.Context, s *session, req Request) (map[string
 	f.wake()
 	_ = s.caller.PatchElements(ctx, "#"+render.ErrorID, render.ClearError(), publisher.WithMode("outer"))
 	return map[string]any{"ok": true, "view": "thread", "sent": true, "pane": a.Pane}, nil
+}
+
+// confirmHTML is the confirm bar for the send or key press that waits on
+// s, or the empty slot when none does.
+func (c *Console) confirmHTML(s *session, a herdr.Agent) string {
+	s.mu.Lock()
+	p, shown := s.pending, s.confirm
+	s.mu.Unlock()
+	if p == nil || !shown || p.pane != a.Pane {
+		return emptyConfirm()
+	}
+	return render.Confirm(a.Pane, a.Label(), a.Kind, p.text, p.keys, c.IsCrew(a))
 }
 
 func emptyConfirm() string { return `<div id="` + render.ConfirmID + `" hidden></div>` }
@@ -782,6 +841,9 @@ func (c *Console) closePane(ctx context.Context, s *session, pane string) (map[s
 	}
 	c.pushPanel(ctx, s)
 	res["closed"] = pane
+	if wasSelected {
+		res["agent"] = nil
+	}
 	return res, nil
 }
 
@@ -821,8 +883,12 @@ func (c *Console) teach(ctx context.Context, s *session, pane string) (map[strin
 // selected session streaming. It patches pillAgent again, so a reloaded
 // page gets its chip back. After a Plugin restart the selection is gone;
 // a pane in the call adopts it again.
-func (c *Console) followAction(ctx context.Context, s *session, pane string, fresh, resync bool) (map[string]any, *Fault) {
+func (c *Console) followAction(ctx context.Context, s *session, req Request) (map[string]any, *Fault) {
+	pane, fresh, resync := req.Pane, req.Fresh, req.Resync
 	s.mu.Lock()
+	if fresh || resync {
+		s.feedThread, s.feedAgents = "", ""
+	}
 	if fresh {
 		// A page that just loaded shows no console: nothing it held is on
 		// the page any more, so the next call renders its view whole.
@@ -843,7 +909,7 @@ func (c *Console) followAction(ctx context.Context, s *session, pane string, fre
 	}
 	if pane == "" {
 		_ = s.caller.PatchSignals(ctx, json.RawMessage(`{"pillAgent":null}`), false)
-		return map[string]any{"ok": true, "following": ""}, nil
+		return map[string]any{"ok": true, "following": "", "agent": nil}, nil
 	}
 	a, err := c.agent(ctx, pane)
 	if err != nil {
@@ -854,16 +920,45 @@ func (c *Console) followAction(ctx context.Context, s *session, pane string, fre
 		return nil, c.fail(ctx, s, notFound, "the selected session is gone")
 	}
 	f := c.ensureFollower(s, a)
+	if req.Feed {
+		c.feedThreadView(ctx, s, f)
+		return map[string]any{"ok": true, "following": pane, "agent": c.agentInfo(a)}, nil
+	}
 	if resync {
 		// The follower sends it all, again on a later round if the
 		// page's Stream is not back yet.
 		f.resync()
-		return map[string]any{"ok": true, "following": pane}, nil
+		return map[string]any{"ok": true, "following": pane, "agent": c.agentInfo(a)}, nil
 	}
 	if err := s.caller.PatchSignals(ctx, c.pillAgent(a), false); err != nil {
 		return nil, patchFault(err)
 	}
-	return map[string]any{"ok": true, "following": pane}, nil
+	return map[string]any{"ok": true, "following": pane, "agent": c.agentInfo(a)}, nil
+}
+
+// feedThreadView adds the follower's current thread to the call's views,
+// from the state it last read and without a patch, unless the person is on
+// another view (the picker, the form) or the page already holds this one.
+func (c *Console) feedThreadView(ctx context.Context, s *session, f *follower) {
+	col := collectorOf(ctx)
+	if col == nil {
+		return
+	}
+	s.mu.Lock()
+	view := s.view
+	s.mu.Unlock()
+	if view != "" && view != "thread" {
+		return
+	}
+	html := f.snapshot(ctx)
+	s.mu.Lock()
+	same := s.view == "thread" && s.feedThread == html
+	s.view = "thread"
+	s.feedThread = html
+	s.mu.Unlock()
+	if !same {
+		col.add(targetConsole, "inner", html)
+	}
 }
 
 func (c *Console) dismiss(ctx context.Context, s *session) (map[string]any, *Fault) {
@@ -882,6 +977,7 @@ func (c *Console) dismiss(ctx context.Context, s *session) (map[string]any, *Fau
 	}
 	s.mu.Lock()
 	s.view = ""
+	s.feedThread = ""
 	s.mu.Unlock()
 	if err := c.region(ctx, s, ""); err != nil {
 		return nil, patchFault(err)

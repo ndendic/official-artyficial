@@ -219,6 +219,39 @@ The signal `pillAgent` is `{pane, name, kind, status, crew, folder}` or `null`. 
 uses the `.hc-*` classes the shell styles; every control carries `data-pill-call` (JSON) or
 `data-pill-form`; there is no script and no `on*` attribute.
 
+## The reply: `views` and `agent`
+
+Besides patching, every call answers with what it patched, for a page that core refuses Caller
+patches (a vouched Page). The patches stay the first path; the reply is the second. Two
+optional input fields tell the Plugin the page draws for itself:
+
+- `views: true`: send nothing to the Caller patch path for this browser session (patches and
+  signals are skipped, the live loops send nothing); the reply carries it all.
+- `feed: true` (implies `views`): a pull. `follow` returns the thread as the follower last
+  knew it, `agents` the panel as the watcher last knew it, as views, with no Caller Stream
+  and no live loop. A view is sent only when it changed since the last one that page was
+  given (the page's `fresh` or `resync`, or any other view it opened, resets that), so a page
+  that asks every few seconds redraws only on change. A feed leaves the picker or the form alone
+  when the person is on one.
+
+The reply map gains, when there is something to draw:
+
+```json
+{"ok": true, "view": "thread", "agent": {"pane":"w1:p1","name":"reviewer","kind":"claude","status":"idle","crew":true,"folder":"/tmp"},
+ "views": [{"target": "console", "mode": "inner", "tree": [{"t":"div","a":{"id":"hc-view"},"k":["text", {"t":"b","k":["x"]}]}]}]}
+```
+
+- `views`: a list in patch order. `target` is `console` (`#pill-console`, mode `inner`), `agents`
+  (`#agents-panel`, `inner`; the list `#ha-list`, `outer`), `confirm` (`#hc-confirm`, `outer`) or `error`
+  (`#hc-error`, `outer`). A node is a string (text) or `{"t": tag, "a": {attribute: value}, "k": [children]}`
+  (`a` and `k` left out when empty), parsed from the same HTML the patch carries; comments are dropped.
+  Patches to anything else (an element inside the thread, a block an agent wrote) are not views.
+- `agent`: the chip, `{pane, name, kind, status, crew, folder}` as in `pillAgent`, or `null` when the
+  chip clears. Sent by `select`, `teach`, `follow` and `close`.
+- A reply with no view stays as it always was: no `views`, and no `agent` unless the call set
+  `views` or `feed`.
+- `$herdrBadge` has no reply form yet: a `views` page gets no badge.
+
 ## The Agents panel
 
 `agents` patches `#agents-panel` (region `agents`, mode `inner`):

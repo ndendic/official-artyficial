@@ -186,10 +186,17 @@ func (c *Console) panelList(ctx context.Context, s *session) render.AgentsList {
 }
 
 // agentsAction renders the panel whole and keeps it live.
-func (c *Console) agentsAction(ctx context.Context, s *session, filter string) (map[string]any, *Fault) {
+func (c *Console) agentsAction(ctx context.Context, s *session, req Request) (map[string]any, *Fault) {
+	filter := req.Filter
 	if len(filter) > 128 {
 		return nil, &Fault{Code: invalid, Message: "the find text is over 128 characters"}
 	}
+	if req.Feed {
+		return c.agentsFeed(ctx, s)
+	}
+	s.mu.Lock()
+	s.feedAgents = ""
+	s.mu.Unlock()
 	now := c.now()
 	s.mu.Lock()
 	s.panelAt = now
@@ -200,7 +207,9 @@ func (c *Console) agentsAction(ctx context.Context, s *session, filter string) (
 	s.panelFilter = filter
 	s.mu.Unlock()
 	l, err := c.renderPanel(ctx, s, true)
-	c.ensurePanelLoop(s)
+	if !s.only.Load() {
+		c.ensurePanelLoop(s)
+	}
 	if err != nil {
 		return nil, patchFault(err)
 	}
@@ -362,4 +371,27 @@ func (c *Console) panelRun(s *session, p *panelLoop, sub <-chan struct{}, unsub 
 			dirty = false
 		}
 	}
+}
+
+// agentsFeed answers a pull: the panel as the watcher last knew it, whole,
+// as a view and without a patch, when it changed since the last one this
+// page was given. It starts no live loop: the page asks again.
+func (c *Console) agentsFeed(ctx context.Context, s *session) (map[string]any, *Fault) {
+	col := collectorOf(ctx)
+	s.mu.Lock()
+	filter := s.panelFilter
+	s.mu.Unlock()
+	l := c.panelList(ctx, s)
+	if l.Error != "" {
+		return nil, &Fault{Code: unavailable, Message: l.Error}
+	}
+	html := render.AgentsPanel(l, filter)
+	s.mu.Lock()
+	same := s.feedAgents == html
+	s.feedAgents = html
+	s.mu.Unlock()
+	if col != nil && !same {
+		col.add(targetAgents, "inner", html)
+	}
+	return map[string]any{"ok": true, "view": "agents", "sessions": l.Sessions()}, nil
 }

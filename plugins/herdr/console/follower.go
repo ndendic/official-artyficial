@@ -743,15 +743,29 @@ func (f *follower) renderAll(ctx context.Context) error {
 	return f.renderAllLocked(ctx)
 }
 
-func (f *follower) renderAllLocked(ctx context.Context) error {
+// snapshot is the thread view as the follower last knew it, whole and
+// with the confirm bar a pending send shows, rendered without a patch and
+// without changing what the follower tracks.
+func (f *follower) snapshot(ctx context.Context) string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	body, _, _ := f.threadBodyLocked(ctx, f.c.confirmHTML(f.s, f.agent))
+	return render.View("thread", body)
+}
+
+func (f *follower) threadBodyLocked(ctx context.Context, confirm string) (string, []render.TurnView, bool) {
 	views := f.viewsLocked()
 	note := ""
 	if f.file == nil {
 		note = "The console shows replies to messages you send from here (it reads this agent's screen)."
 	}
-	body := render.Thread(f.c.head(f.agent, f.sourceLocked()), views, note) + emptyConfirm()
+	body := render.Thread(f.c.head(f.agent, f.sourceLocked()), views, note) + confirm
 	dialogHTML, shown := f.dialogHTMLLocked(ctx)
-	body += dialogHTML
+	return body + dialogHTML, views, shown
+}
+
+func (f *follower) renderAllLocked(ctx context.Context) error {
+	body, views, shown := f.threadBodyLocked(ctx, emptyConfirm())
 	if err := f.c.region(ctx, f.s, render.View("thread", body)); err != nil {
 		return err
 	}

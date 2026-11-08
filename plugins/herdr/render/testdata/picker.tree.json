@@ -1,0 +1,287 @@
+[
+ {
+  "t": "div",
+  "a": {
+   "aria-label": "herdr sessions",
+   "class": "hc-picker",
+   "role": "listbox"
+  },
+  "k": [
+   {
+    "t": "label",
+    "a": {
+     "class": "hc-search"
+    },
+    "k": [
+     {
+      "t": "span",
+      "a": {
+       "aria-hidden": "true"
+      },
+      "k": [
+       "⌕"
+      ]
+     },
+     {
+      "t": "input",
+      "a": {
+       "aria-label": "Find a session or folder",
+       "autocomplete": "off",
+       "class": "hc-find",
+       "placeholder": "Find a session or folder",
+       "spellcheck": "false",
+       "type": "search",
+       "value": ""
+      }
+     }
+    ]
+   },
+   {
+    "t": "div",
+    "a": {
+     "class": "hc-list"
+    },
+    "k": [
+     {
+      "t": "div",
+      "a": {
+       "class": "hc-group"
+      },
+      "k": [
+       "Crew"
+      ]
+     },
+     {
+      "t": "div",
+      "a": {
+       "aria-selected": "false",
+       "class": "hc-row",
+       "data-pill-call": "{\"action\":\"select\",\"pane\":\"w1:p1\"}",
+       "data-search": "reviewer /home/x/proj /home/x/proj",
+       "role": "option",
+       "tabindex": "0"
+      },
+      "k": [
+       {
+        "t": "span",
+        "a": {
+         "aria-hidden": "true",
+         "class": "hc-ico",
+         "data-kind": "claude"
+        },
+        "k": [
+         {
+          "t": "svg",
+          "a": {
+           "height": "18",
+           "viewBox": "0 0 24 24",
+           "width": "18"
+          },
+          "k": [
+           {
+            "t": "g",
+            "a": {
+             "fill": "none",
+             "stroke": "currentColor",
+             "stroke-linecap": "round",
+             "stroke-width": "2.6"
+            },
+            "k": [
+             {
+              "t": "path",
+              "a": {
+               "d": "M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4"
+              }
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "t": "span",
+        "a": {
+         "class": "hc-name"
+        },
+        "k": [
+         "reviewer"
+        ]
+       },
+       {
+        "t": "span",
+        "a": {
+         "class": "hc-crew"
+        },
+        "k": [
+         "crew"
+        ]
+       },
+       {
+        "t": "span",
+        "a": {
+         "class": "hc-folder",
+         "title": "/home/x/proj"
+        },
+        "k": [
+         "/home/x/proj"
+        ]
+       },
+       {
+        "t": "span",
+        "a": {
+         "class": "hc-status"
+        },
+        "k": [
+         {
+          "t": "span",
+          "a": {
+           "class": "hc-dot",
+           "data-status": "idle"
+          }
+         },
+         "idle"
+        ]
+       }
+      ]
+     },
+     {
+      "t": "div",
+      "a": {
+       "class": "hc-group"
+      },
+      "k": [
+       "Opened from the console"
+      ]
+     },
+     {
+      "t": "div",
+      "a": {
+       "aria-selected": "true",
+       "class": "hc-row",
+       "data-pill-call": "{\"action\":\"select\",\"pane\":\"w2:p1\"}",
+       "data-search": "pi-a /home/x/b /home/x/b",
+       "role": "option",
+       "tabindex": "0"
+      },
+      "k": [
+       {
+        "t": "span",
+        "a": {
+         "aria-hidden": "true",
+         "class": "hc-ico",
+         "data-kind": "pi"
+        },
+        "k": [
+         {
+          "t": "svg",
+          "a": {
+           "height": "18",
+           "viewBox": "0 0 24 24",
+           "width": "18"
+          },
+          "k": [
+           {
+            "t": "g",
+            "a": {
+             "fill": "none",
+             "stroke": "currentColor",
+             "stroke-linecap": "round",
+             "stroke-width": "2.2"
+            },
+            "k": [
+             {
+              "t": "path",
+              "a": {
+               "d": "M4.5 7.5h15M9 7.5v11M15.5 7.5v8.5c0 1.6.8 2.5 2.4 2.5"
+              }
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "t": "span",
+        "a": {
+         "class": "hc-name"
+        },
+        "k": [
+         "pi-a"
+        ]
+       },
+       {
+        "t": "span",
+        "a": {
+         "class": "hc-folder",
+         "title": "/home/x/b"
+        },
+        "k": [
+         "/home/x/b"
+        ]
+       },
+       {
+        "t": "span",
+        "a": {
+         "class": "hc-status"
+        },
+        "k": [
+         {
+          "t": "span",
+          "a": {
+           "class": "hc-dot",
+           "data-status": "working"
+          }
+         },
+         "working"
+        ]
+       },
+       {
+        "t": "span",
+        "a": {
+         "class": "hc-tools"
+        },
+        "k": [
+         {
+          "t": "button",
+          "a": {
+           "data-pill-call": "{\"action\":\"teach\",\"pane\":\"w2:p1\"}",
+           "title": "Send the patch-block primer once",
+           "type": "button"
+          },
+          "k": [
+           "Teach patch blocks"
+          ]
+         },
+         {
+          "t": "button",
+          "a": {
+           "data-pill-call": "{\"action\":\"close\",\"pane\":\"w2:p1\"}",
+           "title": "Close this session",
+           "type": "button"
+          },
+          "k": [
+           "Close"
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "t": "button",
+    "a": {
+     "class": "hc-new",
+     "data-pill-call": "{\"action\":\"new\"}",
+     "type": "button"
+    },
+    "k": [
+     "＋ New session…"
+    ]
+   }
+  ]
+ }
+]
