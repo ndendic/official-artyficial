@@ -142,3 +142,29 @@ func TestStartedThenEndedWithoutAFeed(t *testing.T) {
 		t.Errorf("a start from a views page stamped the follower %d", f.pages.Load())
 	}
 }
+
+// The kind bits are the session's, not one pane's: a vouched tab that moves
+// to another pane and back must not take the Patcher away from the
+// unvouched tab that has shown the pane all along.
+func TestPatchBitSurvivesAPaneRepick(t *testing.T) {
+	c, h, fc := setup(t, reviewer, docsSite)
+	steps := []struct {
+		tab string
+		req Request
+	}{
+		{"A:1", Request{Action: "select", Pane: reviewer.Pane}},
+		{"A:2", Request{Action: "follow", Pane: reviewer.Pane, Feed: true, Views: true}},
+		{"A:2", Request{Action: "select", Pane: docsSite.Pane, Views: true}},
+		{"A:2", Request{Action: "select", Pane: reviewer.Pane, Views: true}},
+	}
+	for _, st := range steps {
+		if _, f := call(t, c, st.tab, st.req); f != nil {
+			t.Fatal(f)
+		}
+	}
+	fc.reset()
+	h.Remove(reviewer.Pane)
+	waitFor(t, "the end reaching the Patcher", func() bool {
+		return strings.Contains(fc.html(), "ended") && strings.Contains(fc.html(), `"pillAgent":null`)
+	})
+}

@@ -158,6 +158,11 @@ func (c *Console) ensureFollower(s *session, a herdr.Agent) *follower {
 		}
 		f.prompts = append([]string(nil), mem.prompts...)
 	}
+	// The kinds of page are the session's (every tab shares it), not one
+	// pane's: a pane picked again keeps the bits the last one had.
+	if prev != nil {
+		f.pages.Store(prev.pages.Load())
+	}
 	f.openSource()
 	f.lookedFor, f.lastLook = sessionKey(a), time.Now()
 	f.read()
