@@ -308,11 +308,20 @@ func FitView(nodes []Node, max int) []Node {
 				continue
 			}
 		}
-		max = CountNodes(out) / 2
+		before := CountNodes(out)
+		max = before / 2
 		if max < 1 {
 			return []Node{}
 		}
 		out = pruneFit(out, max)
+		if CountNodes(out) >= before {
+			// the bulk sits where no pass reaches (spared attributes of the
+			// foot): halving cannot shrink it, so keep the foot and stop
+			if hasFoot(out) {
+				out = keepFoot(out)
+			}
+			break
+		}
 	}
 	// the note can add nodes to a view that was at its limit
 	if CountNodes(out) > limit || depthOf(out) > maxViewDepth {
@@ -665,6 +674,14 @@ func cutTailBytes(ks []Node, want int) ([]Node, int) {
 	for len(out) > 0 && removed < want {
 		last := out[len(out)-1]
 		sz := jsonSize([]Node{last}) - 1 // the node and its comma
+		if str, isStr := last.(string); isStr && sz > want-removed {
+			// keep a prefix of the text: the end goes, the start stays
+			if keep, left := textPrefix(str, sz-(want-removed)); keep != "" {
+				out[len(out)-1] = keep
+				removed += sz - left
+				break
+			}
+		}
 		el, isEl := last.(Element)
 		if sz <= want-removed || !isEl || len(el.K) == 0 || jsonSize(el.K) < want-removed {
 			out = out[:len(out)-1]
@@ -681,6 +698,27 @@ func cutTailBytes(ks []Node, want int) ([]Node, int) {
 		break
 	}
 	return out, removed
+}
+
+// textPrefix is the longest prefix of s (cut on a rune, ended with an
+// ellipsis) whose node and comma take at most room JSON bytes, and that
+// size. It returns "" when not even one rune fits.
+func textPrefix(s string, room int) (string, int) {
+	r := []rune(s)
+	size := func(n int) int { return jsonSize([]Node{string(r[:n]) + "…"}) - 1 }
+	lo, hi := 0, len(r)
+	for lo < hi {
+		mid := (lo + hi + 1) / 2
+		if size(mid) <= room {
+			lo = mid
+		} else {
+			hi = mid - 1
+		}
+	}
+	if lo == 0 {
+		return "", 0
+	}
+	return string(r[:lo]) + "…", size(lo)
 }
 
 type countWriter int
