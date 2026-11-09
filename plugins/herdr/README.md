@@ -260,7 +260,8 @@ The reply map gains, when there is something to draw:
   A view is at most 3500 nodes (the shell refuses one over 4000): an answer too long for that is cut
   at its end, with a line saying so, never the whole console. The same holds for bytes (224 KiB a
   view): the cut goes inside the largest answer, so the other turns, the confirm bar, the dialog and the
-  error line stay. A reply holds at most 15000 nodes in all (the shell refuses past 16000) and 768 KiB;
+  error line stay (the dialog's screen loses its start, not its end, where the prompt is). A foot
+  alone over the 224 KiB (impossible with today's renderer) is kept whole and the view exceeds it. A reply holds at most 15000 nodes in all (the shell refuses past 16000) and 768 KiB;
   past either, a view a later one of the same target paints over goes first, then the oldest.
 - `agent`: the chip, `{pane, name, kind, status, crew, folder}` as in `pillAgent`, or `null` when the
   chip clears. Sent by `select`, `teach`, `follow` and `close`, flag or not (a reloaded page follows
