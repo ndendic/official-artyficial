@@ -41,7 +41,7 @@ func textOf(ns []Node) string {
 	return b.String()
 }
 
-// A huge dialog <pre> keeps a prefix of its text, not only the note.
+// A huge dialog keeps text, not only the note.
 func TestFitViewHugeDialogKeepsAPrefix(t *testing.T) {
 	screen := "Do you want to proceed?\n" + strings.Repeat("line of the dialog screen\n", 20000)
 	tree, _ := Tree(View("thread", bigThread()+`<div id="hc-confirm" hidden></div>`+Dialog("p1", "crew-a", screen, []string{"enter", "esc"})+`<div id="hc-error" hidden></div>`))
@@ -50,8 +50,8 @@ func TestFitViewHugeDialogKeepsAPrefix(t *testing.T) {
 	if !ok {
 		t.Fatal("dialog lost")
 	}
-	if txt := textOf(card.K); !strings.Contains(txt, "Do you want to proceed?") {
-		t.Errorf("dialog text lost its prefix: %.120q", txt)
+	if txt := textOf(card.K); !strings.Contains(txt, "is waiting on a dialog") {
+		t.Errorf("dialog lost its intro: %.120q", txt)
 	}
 	if jsonSize(got) > MaxViewBytes {
 		t.Errorf("over max: %d", jsonSize(got))
@@ -73,5 +73,23 @@ func TestFitViewSmallAnswersKeepText(t *testing.T) {
 	}
 	if !strings.Contains(textOf(got), "word word") {
 		t.Errorf("no answer kept any text")
+	}
+}
+
+// The prompt is at the bottom of a dialog screen: a cut keeps the end.
+func TestFitViewHugeDialogKeepsTheTail(t *testing.T) {
+	screen := strings.Repeat("line of the dialog screen\n", 20000) + "Do you want to proceed? (y/n)"
+	tree, _ := Tree(View("thread", bigThread()+`<div id="hc-confirm" hidden></div>`+Dialog("p1", "crew-a", screen, []string{"enter", "esc"})+`<div id="hc-error" hidden></div>`))
+	got := FitView(tree, MaxViewNodes)
+	card, ok := findEl(got, DialogID)
+	if !ok {
+		t.Fatal("dialog lost")
+	}
+	txt := textOf(card.K)
+	if !strings.Contains(txt, "Do you want to proceed? (y/n)") || !strings.Contains(txt, "…") {
+		t.Errorf("dialog lost its end: %.80q", txt[len(txt)-80:])
+	}
+	if jsonSize(got) > MaxViewBytes {
+		t.Errorf("over max: %d", jsonSize(got))
 	}
 }

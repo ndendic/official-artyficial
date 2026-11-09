@@ -274,7 +274,9 @@ const maxTextRunes = 2000
 // then the end of the largest answer (hc-a), else of the largest element, goes
 // and CutNote says so, as FitTree does for nodes, so the other turns, the
 // confirm bar, the dialog card and the error line stay whole. The argument is
-// never changed.
+// never changed. The one case it cannot bound: a foot whose own size (its
+// attributes are spared) passes MaxViewBytes is kept whole, and the view may
+// exceed MaxViewBytes by that much.
 func FitView(nodes []Node, max int) []Node {
 	limit := max
 	wrapped := make([]Node, 0, len(nodes))
@@ -536,16 +538,22 @@ func cutBytes(nodes []Node, excess int) []Node {
 		return nodes
 	}
 	want := excess + noteSz
-	var rebuild func(ns []Node, path []int, depth int) []Node
-	rebuild = func(ns []Node, path []int, depth int) []Node {
+	var rebuild func(ns []Node, path []int, depth int, dialog bool) []Node
+	rebuild = func(ns []Node, path []int, depth int, dialog bool) []Node {
 		out := append([]Node(nil), ns...)
 		el := out[path[0]].(Element)
+		dialog = dialog || el.A["id"] == DialogID
 		if len(path) > 1 {
-			el.K = rebuild(el.K, path[1:], depth+1)
+			el.K = rebuild(el.K, path[1:], depth+1, dialog)
 			out[path[0]] = el
 			return out
 		}
-		k, _ := cutTailBytes(el.K, want)
+		cut := cutTailBytes
+		if dialog {
+			// the prompt is at the bottom of a screen: its start goes
+			cut = cutHeadBytes
+		}
+		k, _ := cut(el.K, want)
 		if len(k) == 0 {
 			k = nil
 		}
@@ -559,7 +567,7 @@ func cutBytes(nodes []Node, excess int) []Node {
 		out[path[0]] = el
 		return out
 	}
-	return rebuild(nodes, path, 1)
+	return rebuild(nodes, path, 1, false)
 }
 
 // cutAnswersBy cuts plan[i] units (bytes or nodes, by cut) from the end of the i-th outermost answer.
@@ -698,6 +706,31 @@ func cutTailBytes(ks []Node, want int) ([]Node, int) {
 		break
 	}
 	return out, removed
+}
+
+// cutHeadBytes cuts about want JSON bytes from the start of a single text
+// node (an ellipsis first); anything else is cut as cutTailBytes does.
+func cutHeadBytes(ks []Node, want int) ([]Node, int) {
+	if len(ks) == 1 {
+		if str, ok := ks[0].(string); ok {
+			sz := jsonSize(ks) - 1
+			r := []rune(str)
+			size := func(n int) int { return jsonSize([]Node{"…" + string(r[len(r)-n:])}) - 1 }
+			lo, hi := 0, len(r)
+			for lo < hi {
+				mid := (lo + hi + 1) / 2
+				if size(mid) <= sz-want {
+					lo = mid
+				} else {
+					hi = mid - 1
+				}
+			}
+			if lo > 0 {
+				return []Node{"…" + string(r[len(r)-lo:])}, sz - size(lo)
+			}
+		}
+	}
+	return cutTailBytes(ks, want)
 }
 
 // textPrefix is the longest prefix of s (cut on a rune, ended with an
