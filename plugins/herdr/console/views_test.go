@@ -3,6 +3,7 @@ package console
 import (
 	"encoding/json"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -310,5 +311,81 @@ func TestHandleReplyStaysUnderTheCoreCap(t *testing.T) {
 	b, _ := json.Marshal(fitReply(col.list()))
 	if len(b) > 1<<20 {
 		t.Fatalf("reply views are %d bytes", len(b))
+	}
+}
+
+func nodesOfViews(vs []View) int {
+	n := 0
+	for _, v := range vs {
+		n += render.CountNodes(v.Tree)
+	}
+	return n
+}
+
+// pill-views.js refuses a reply over 16000 nodes in all: 40 views of one
+// target come out as the last one.
+func TestFitReplyKeepsTheLastViewPerTargetAndBoundsNodes(t *testing.T) {
+	mk := func(target, mode, tag string, n int) View {
+		ks := make([]render.Node, n)
+		for i := range ks {
+			ks[i] = render.Element{T: "i"}
+		}
+		return View{Target: target, Mode: mode, Tree: []render.Node{render.Element{T: "div", A: map[string]string{"id": tag}, K: ks}}}
+	}
+	var vs []View
+	for i := 0; i < 40; i++ {
+		vs = append(vs, mk("console", "inner", "c"+strconv.Itoa(i), 499)) // 500 nodes: 20000 in all
+	}
+	vs = append(vs, mk("agents", "inner", "a", 10), mk("confirm", "outer", "hc-confirm", 5))
+	got := fitReply(vs)
+	if n := nodesOfViews(got); n > 15000 {
+		t.Fatalf("%d nodes", n)
+	}
+	count := map[string]int{}
+	for _, v := range got {
+		count[v.Target]++
+	}
+	if count["console"] != 1 || count["agents"] != 1 || count["confirm"] != 1 {
+		t.Fatalf("views per target %v", count)
+	}
+	if got[0].Tree[0].(render.Element).A["id"] != "c39" {
+		t.Errorf("not the last console view: %v", got[0].Tree[0].(render.Element).A["id"])
+	}
+}
+
+// Distinct targets over the node budget lose the oldest first; an earlier
+// outer view stays when a later inner one follows it.
+func TestFitReplyDropsOldestOverTheNodeBudget(t *testing.T) {
+	mk := func(target, mode string, n int) View {
+		return View{Target: target, Mode: mode, Tree: []render.Node{render.Element{T: "div", K: make([]render.Node, n)}}}
+	}
+	fill := func(v View) View {
+		el := v.Tree[0].(render.Element)
+		for i := range el.K {
+			el.K[i] = render.Element{T: "i"}
+		}
+		return v
+	}
+	vs := []View{fill(mk("confirm", "outer", 9000)), fill(mk("console", "inner", 9000)), fill(mk("agents", "inner", 2000))}
+	got := fitReply(vs)
+	if n := nodesOfViews(got); n > 15000 || len(got) != 2 || got[0].Target != "console" || got[1].Target != "agents" {
+		t.Fatalf("%d nodes, %d views, first %v", nodesOfViews(got), len(got), got[0].Target)
+	}
+	// over budget, an earlier outer view survives a later inner one (the
+	// inner one only replaces the content), a later outer supersedes an
+	// earlier inner one, and a later inner supersedes an earlier inner
+	pad := fill(mk("agents", "inner", 4000))
+	outer, inner := fill(mk("console", "outer", 5000)), fill(mk("console", "inner", 5000))
+	got = fitReply([]View{outer, inner, pad, fill(mk("console", "inner", 5000))})
+	if len(got) != 3 || got[0].Mode != "outer" || got[1].Target != "agents" {
+		t.Errorf("outer then inner: %d views", len(got))
+	}
+	got = fitReply([]View{inner, outer, pad, fill(mk("error", "outer", 5000))})
+	if len(got) != 3 || got[0].Mode != "outer" || got[0].Target != "console" {
+		t.Errorf("inner then outer: %d views", len(got))
+	}
+	got = fitReply([]View{pad, fill(mk("confirm", "outer", 5000)), fill(mk("confirm", "outer", 5000)), fill(mk("error", "outer", 5000))})
+	if len(got) != 3 || got[0].Target != "agents" {
+		t.Errorf("outer then outer: %d views", len(got))
 	}
 }

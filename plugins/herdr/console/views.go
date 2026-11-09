@@ -256,15 +256,54 @@ func (r *recorder) PatchSignals(ctx context.Context, signals json.RawMessage, on
 // render.MaxViewBytes, the rest of the reply is small.
 const maxReplyViewBytes = 768 << 10
 
-// fitReply drops the oldest views until the rest fit maxReplyViewBytes. A
-// view is whole or absent: a later view of the same target replaces an older
-// one on the page, so the oldest is the one to lose.
+// maxReplyViewNodes is the margin under pill-views.js's MAX_TOTAL (16000
+// nodes for one reply, past which it refuses a view).
+const maxReplyViewNodes = 15000
+
+// superseded reports whether a later view of the same target makes view i
+// pointless the way pill-views.js applies them in order: an outer view
+// replaces the whole element, so it wipes any earlier view of the target; an
+// inner view replaces the content only, so it wipes an earlier inner view
+// and leaves an earlier outer one (the element's own attributes) standing.
+func superseded(views []View, i int) bool {
+	for _, later := range views[i+1:] {
+		if later.Target == views[i].Target && (later.Mode == "outer" || views[i].Mode != "outer") {
+			return true
+		}
+	}
+	return false
+}
+
+// fitReply makes the views fit a reply. A reply within maxReplyViewNodes and
+// maxReplyViewBytes goes out as it is (the shell draws every view in order,
+// and a test or a reader may want a late draw that a later view paints over).
+// Past either, the views a later one supersedes go first, then the oldest go
+// until the rest fit. The shell counts nodes against 16000 per reply. A view
+// is whole or absent.
 func fitReply(views []View) []View {
+	nodes := func(vs []View) int {
+		n := 0
+		for _, v := range vs {
+			n += render.CountNodes(v.Tree)
+		}
+		return n
+	}
 	size := func(vs []View) int {
 		b, _ := json.Marshal(vs)
 		return len(b)
 	}
-	for len(views) > 1 && size(views) > maxReplyViewBytes {
+	fits := func(vs []View) bool { return nodes(vs) <= maxReplyViewNodes && size(vs) <= maxReplyViewBytes }
+	if fits(views) {
+		return views
+	}
+	kept := make([]View, 0, len(views))
+	for i, v := range views {
+		if !superseded(views, i) {
+			kept = append(kept, v)
+		}
+	}
+	views = kept
+	for len(views) > 1 && !fits(views) {
 		views = views[1:]
 	}
 	return views

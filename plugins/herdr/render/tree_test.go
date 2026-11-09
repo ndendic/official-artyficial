@@ -222,3 +222,120 @@ func TestFitViewBoundsBytes(t *testing.T) {
 		t.Fatalf("many: size %d", n)
 	}
 }
+
+// An oversized thread loses the end of its largest answer, not the newest
+// turns, the confirm bar, the dialog card or the error line.
+func TestFitViewByteCutKeepsTheTailOfTheThread(t *testing.T) {
+	para := "<p>" + strings.Repeat("y", 1500) + "</p>"
+	big := `<div class="hc-a" id="hc-a-big">` + strings.Repeat(para, 400) + `</div>`
+	tree, _ := Tree(`<div id="hc-thread">` + answerOf("old", 3) + big + answerOf("newest", 3) + `</div>` +
+		`<div id="hc-confirm">confirm-bar</div><div class="hc-dialog">dialog-card</div><p id="hc-error">error-line</p>`)
+	got := FitView(tree, MaxViewNodes)
+	if n := jsonSize(got); n > MaxViewBytes || n == 0 {
+		t.Fatalf("size %d", n)
+	}
+	flat := flatText(got)
+	for _, want := range []string{"confirm-bar", "dialog-card", "error-line", CutNote} {
+		if !strings.Contains(flat, want) {
+			t.Errorf("%q is gone from the cut view", want)
+		}
+	}
+	ids := map[string]int{}
+	var walk func([]Node)
+	walk = func(ns []Node) {
+		for _, n := range ns {
+			if el, ok := n.(Element); ok {
+				ids[el.A["id"]] = CountNodes(el.K)
+				walk(el.K)
+			}
+		}
+	}
+	walk(got)
+	if ids["hc-a-old"] != 6 || ids["hc-a-newest"] != 6 {
+		t.Errorf("another turn was cut: %v", ids)
+	}
+	if ids["hc-a-big"] == 0 {
+		t.Error("the big answer is gone")
+	}
+}
+
+// With no answer to cut, the largest element is cut inside and says so.
+func TestFitViewByteCutWithoutAnswerLeavesANote(t *testing.T) {
+	para := "<p>" + strings.Repeat("y", 1500) + "</p>"
+	tree, _ := Tree(`<div id="hc-a-x">` + strings.Repeat(para, 400) + `</div><div id="hc-confirm">confirm-bar</div>`)
+	got := FitView(tree, MaxViewNodes)
+	flat := flatText(got)
+	if jsonSize(got) > MaxViewBytes || !strings.Contains(flat, CutNote) || !strings.Contains(flat, "confirm-bar") {
+		t.Errorf("size %d, note %v, confirm %v", jsonSize(got), strings.Contains(flat, CutNote), strings.Contains(flat, "confirm-bar"))
+	}
+}
+
+// Wrapping top-level text in a span counts against the node budget.
+func TestFitViewWrapCountsAgainstTheBudget(t *testing.T) {
+	// exactly max nodes, all top-level text: each one gains a span.
+	const max = 4000
+	tree := make([]Node, 0, max)
+	for i := 0; i < max; i++ {
+		tree = append(tree, "text")
+	}
+	if CountNodes(tree) != max {
+		t.Fatal("setup")
+	}
+	got := FitView(tree, max)
+	if n := CountNodes(got); n > max {
+		t.Errorf("%d nodes over %d after wrapping", n, max)
+	}
+	for _, v := range got {
+		if _, ok := v.(Element); !ok {
+			t.Fatalf("top-level %T", v)
+		}
+	}
+}
+
+// A view with no answer is wrapped in one root (render.View); the byte cut goes
+// inside its body, so the foot controls and the error slot stay.
+func TestFitViewByteCutInsideTheViewWrapperKeepsTheFoot(t *testing.T) {
+	var rows strings.Builder
+	for i := 0; i < 300; i++ {
+		rows.WriteString(`<div class="hc-row" data-x="` + strings.Repeat("z", 1000) + `">r</div>`)
+	}
+	tree, _ := Tree(`<div id="hc-view"><div class="hc-picker"><div class="hc-group">` + rows.String() +
+		`</div><button class="hc-new">New session</button></div><div id="hc-error" hidden></div></div>`)
+	got := FitView(tree, MaxViewNodes)
+	if jsonSize(got) > MaxViewBytes {
+		t.Fatalf("size %d", jsonSize(got))
+	}
+	hasErr := false
+	var walk func([]Node)
+	walk = func(ns []Node) {
+		for _, n := range ns {
+			if el, ok := n.(Element); ok {
+				if el.A["id"] == "hc-error" {
+					hasErr = true
+				}
+				walk(el.K)
+			}
+		}
+	}
+	walk(got)
+	flat := flatText(got)
+	if !hasErr || !strings.Contains(flat, "New session") || !strings.Contains(flat, CutNote) {
+		t.Errorf("error slot %v, button %v, note %v", hasErr, strings.Contains(flat, "New session"), strings.Contains(flat, CutNote))
+	}
+}
+
+// The note the byte cut adds does not push the view past the depth limit.
+func TestFitViewByteCutNoteKeepsTheDepthLimit(t *testing.T) {
+	var kids []Node
+	for i := 0; i < 200; i++ {
+		kids = append(kids, strings.Repeat("t", 1900))
+	}
+	var n Node = Element{T: "div", A: map[string]string{"class": "hc-a"}, K: kids}
+	for i := 0; i < 21; i++ {
+		n = Element{T: "div", K: []Node{n}}
+	}
+	got := FitView([]Node{n}, MaxViewNodes)
+	if jsonSize(got) > MaxViewBytes || depthOf(got) > maxViewDepth {
+		t.Errorf("size %d, depth %d", jsonSize(got), depthOf(got))
+	}
+}
