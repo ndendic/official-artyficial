@@ -21,12 +21,13 @@ Each listing folder holds `.artyficial/extension.json`, a README and at least on
 
 ## Listings
 
-Shells and themes for RT Station. Each one depends on RT Coat, the UI library the `rt` binary carries and serves
-at `/static/ui/`; a listing ships only its own files. Each folder's README says how to install it on `rt` v0.20.1
-(by hand) and on the next release (with `rt package`).
+One Plugin, and shells and themes for RT Station. Each shell and theme depends on RT Coat, the UI library the `rt`
+binary carries and serves at `/static/ui/`; a listing ships only its own files. Each folder's README says how to
+install it on `rt` v0.20.1 (by hand) and on the next release (with `rt package`).
 
 | Listing | Kind | Version | Tag | Note |
 |---|---|---|---|---|
+| [artyficial.herdr](plugins/herdr/) | plugin | 1.2.0 | `artyficial.herdr--v1.2.0` | herdr console: drive coding agents in herdr from the pill; changes in its `CHANGELOG.md` |
 | [canvas](shells/canvas/) | shell | 0.1.5 | `canvas--v0.1.5` | the classic sidebar, title bar and inspector shell |
 | [ribbon-sheet](shells/ribbon-sheet/) | shell | 0.1.6 | `ribbon-sheet--v0.1.6` | the blank Ribbon & Sheet; not carried by v0.20.1, installs by hand there |
 | [ribbon-deck](shells/ribbon-deck/) | shell | 0.3.5 | `ribbon-deck--v0.3.5` | Ribbon & Sheet Showcase; the AI pill talks to the herdr console Plugin when it is installed |

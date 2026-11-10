@@ -80,7 +80,7 @@ page's Accept Rules. It needs the herdr socket on the same machine
 
 ## Install from the Artyficial marketplace
 
-The Artyficial Space lists this Plugin from the release tag `artyficial.herdr--v1.1.0`.
+The Artyficial Space lists this Plugin from the release tag `artyficial.herdr--v1.2.0`.
 Install it from the Space on the device that runs your Workspace: Device Control downloads the
 release asset, checks its SHA-256 and its manifest, and installs it.
 
@@ -90,13 +90,13 @@ the same release folder, review it, and enable it.
 
 ## Install the release asset by hand
 
-1. Download `artyficial.herdr-1.1.0-linux-amd64.tar.gz` from the GitHub Release
-   `artyficial.herdr--v1.1.0` of this repository.
+1. Download `artyficial.herdr-1.2.0-linux-amd64.tar.gz` from the GitHub Release
+   `artyficial.herdr--v1.2.0` of this repository.
 2. Extract it into a new, empty folder. It holds `manifest.json`, the `provider` binary and
    `THIRD_PARTY_NOTICES`:
 
    ```sh
-   mkdir herdr-console && tar -xzf artyficial.herdr-1.1.0-linux-amd64.tar.gz -C herdr-console
+   mkdir herdr-console && tar -xzf artyficial.herdr-1.2.0-linux-amd64.tar.gz -C herdr-console
    ```
 
 3. As the signed-in owner (`rt login`) of the running Workspace, from the Workspace folder,
@@ -469,6 +469,7 @@ build.go        go run build.go → package/
 bin/release     build and pack a release asset into dist/
 bin/herdr-console  install, upgrade, remove; add the Patch Regions
 manifest.template.json, .artyficial/extension.json
+CHANGELOG.md    what each release changed
 ```
 
 ## Licence
