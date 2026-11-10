@@ -511,7 +511,7 @@ func TestViewsCallDoesNotRecordTheBadgeAsSent(t *testing.T) {
 	}
 }
 
-// ---- late draws on an open vouched Stream (review round 7, B1) ----
+// ---- late draws on an open vouched Stream ----
 
 // openStream is a Patcher as an open vouched Stream makes it: core accepts
 // every Caller patch (nil), and the sink then drops it.
@@ -683,7 +683,7 @@ func TestLateDrawWithoutViewsStillPatches(t *testing.T) {
 	}
 }
 
-// ---- one call's switch is its own (review round 8) ----
+// ---- one call's switch is its own ----
 
 // A tab that asked for views once does not make the session's other tab
 // (which draws from patches) lose the end of its agent.

@@ -21,8 +21,8 @@ answers with what it would have patched, and the page draws it.
   error line as a `views` entry, never `starting`.
 - **Bounded views.** A view stays under the shell's limits (3500 nodes, 224 KiB) and a reply
   under 15000 nodes and 768 KiB. A long answer is cut at its end with a line saying so; the
-  confirm bar, the dialog card and the error line are never cut, and a dialog screen keeps its
-  end, where the prompt is.
+  confirm bar, the dialog card and the error line are never cut (a foot that alone is over the
+  byte limit is kept whole), and a dialog screen keeps its end, where the prompt is.
 - **Known limit:** late draws wait per browser session, not per tab (the request carries no
   tab id).
 

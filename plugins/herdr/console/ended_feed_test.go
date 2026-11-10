@@ -31,7 +31,7 @@ func TestEndedReachesTheVouchedFeed(t *testing.T) {
 	s.mu.Unlock()
 }
 
-// Same for a session started from the pill (C1's case), followed by the feed.
+// Same for a session started from the pill, followed by the feed.
 func TestStartedThenEndedThroughTheFeed(t *testing.T) {
 	c, h := setupOpenStream(t)
 	c.StartWait = 3 * time.Second
