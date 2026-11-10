@@ -15,7 +15,7 @@ import (
 	"herdr-console/render"
 )
 
-// Review fixes for the views: what the shell can draw, which call's switch
+// The views as the shell draws them: what the shell can draw, which call's switch
 // is which, and what a page that takes no Patcher patch is still told.
 
 // drawable are the (target, mode) pairs pill-views.js draws: the console and

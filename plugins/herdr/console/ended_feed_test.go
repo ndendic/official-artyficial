@@ -7,7 +7,7 @@ import (
 
 // The vouched Page's own next call after an end is its 2 s feed for the pane
 // it still shows (pill.js feedStep: {action:follow, pane: current.pane, feed:true}).
-func TestR9EndedReachesTheVouchedFeed(t *testing.T) {
+func TestEndedReachesTheVouchedFeed(t *testing.T) {
 	c, h := setupOpenStream(t, reviewer)
 	if _, f := call(t, c, "A:1", Request{Action: "select", Pane: reviewer.Pane, Views: true}); f != nil {
 		t.Fatal(f)
@@ -32,7 +32,7 @@ func TestR9EndedReachesTheVouchedFeed(t *testing.T) {
 }
 
 // Same for a session started from the pill (C1's case), followed by the feed.
-func TestR9StartedThenEndedThroughTheFeed(t *testing.T) {
+func TestStartedThenEndedThroughTheFeed(t *testing.T) {
 	c, h := setupOpenStream(t)
 	c.StartWait = 3 * time.Second
 	res, f := call(t, c, "A:1", Request{Action: "start", Kind: "claude", Cwd: t.TempDir(), Name: "mine", Views: true})
