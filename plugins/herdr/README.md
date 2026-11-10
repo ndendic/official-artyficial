@@ -158,7 +158,11 @@ go test ./...                                     # unit tests: parser, safety r
 bin/herdr-console install -w /path/to/workspace   # build, then install as above
 ```
 
-In a git worktree (`worktrees/<name>/plugins/herdr`) `../../../data-start` does not exist: `go test` and `go vet` take a copy of `go.mod` whose `replace` points at the checkout (`go test -modfile=/tmp/herdr.mod ./...`, `go.mod` itself stays untouched), as `DATA_START_DIR` does for `go run build.go`.
+Where `../../../data-start` does not exist (a git worktree, for example), give `go test` and
+`go vet` a copy of `go.mod` whose `replace` points at your checkout, with a copy of `go.sum`
+beside it under the same name (`herdr.mod` and `herdr.sum`), and run
+`go test -modfile=/path/to/herdr.mod ./...`. `go.mod` itself stays untouched; `DATA_START_DIR`
+does the same for `go run build.go`.
 
 `build.go` builds for the target `go env GOOS GOARCH` reports and writes it to
 `manifest.platform.targets`. To make a release asset:
