@@ -22,7 +22,7 @@ func TestRenderedHTMLIsSafeAndUsesAgreedClasses(t *testing.T) {
 		"picker": Picker([]Group{{Title: evil, Rows: []Row{{Pane: "w1:p1", Name: evil, Folder: evil, Kind: "claude", Status: "idle", Crew: true, Opened: true, Selected: true}}}}, ""),
 		"form":   Form([]string{"gemini"}, []string{evil}, FormValues{Cwd: evil, Name: evil}),
 		"thread": Thread(Head{Name: evil, Kind: "codex", Status: "working", Folder: evil}, []TurnView{{ID: "t1", Prompt: evil, Items: []Item{
-			{Text: evil + "\n\n```\n" + evil + "\n```\n- " + evil},
+			{Text: evil + "\n\n```\n" + evil + "\n```\n- " + evil + "\n\n| " + evil + " | b |\n|---|---|\n| " + evil + " | **b** |"},
 			{Tools: 3},
 			{Chip: &Chip{OK: true, Label: evil}},
 			{Chip: &Chip{Label: evil, Reason: evil, Raw: evil}},
@@ -52,7 +52,7 @@ func TestRenderedHTMLIsSafeAndUsesAgreedClasses(t *testing.T) {
 			}
 		}
 	}
-	if !strings.Contains(outputs["thread"], "<b>b</b>") || !strings.Contains(outputs["thread"], "<pre><code>") || !strings.Contains(outputs["thread"], "<li>") {
+	if !strings.Contains(outputs["thread"], "<b>b</b>") || !strings.Contains(outputs["thread"], "<pre><code>") || !strings.Contains(outputs["thread"], "<li>") || !strings.Contains(outputs["thread"], "<td><b>b</b></td>") {
 		t.Errorf("markdown did not render: %s", outputs["thread"])
 	}
 	if !strings.Contains(outputs["thread"], `data-ok`) || !strings.Contains(outputs["thread"], `data-err`) {

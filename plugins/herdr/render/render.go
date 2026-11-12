@@ -453,8 +453,88 @@ var (
 	link       = regexp.MustCompile(`\[([^\]\n]+)\]\((https?://[^)\s]+)\)`)
 )
 
+// tableDelim is one cell of a table's delimiter row: dashes, with an
+// optional colon at either end.
+var tableDelim = regexp.MustCompile(`^:?-+:?$`)
+
+// tableCells splits one table row into its cells: the outer pipes are
+// optional and `\|` is a pipe inside a cell.
+func tableCells(line string) []string {
+	t := strings.TrimSpace(line)
+	t = strings.TrimPrefix(t, "|")
+	if strings.HasSuffix(t, "|") && !strings.HasSuffix(t, `\|`) {
+		t = t[:len(t)-1]
+	}
+	var cells []string
+	var cur strings.Builder
+	for i := 0; i < len(t); i++ {
+		switch {
+		case t[i] == '\\' && i+1 < len(t) && t[i+1] == '|':
+			cur.WriteByte('|')
+			i++
+		case t[i] == '|':
+			cells = append(cells, strings.TrimSpace(cur.String()))
+			cur.Reset()
+		default:
+			cur.WriteByte(t[i])
+		}
+	}
+	return append(cells, strings.TrimSpace(cur.String()))
+}
+
+// tableHead reports whether lines[i] and lines[i+1] start a table (a
+// GitHub-style pipe table): a row with a pipe, then a delimiter row with
+// as many cells. It returns the header cells.
+func tableHead(lines []string, i int) ([]string, bool) {
+	if i+1 >= len(lines) || !strings.Contains(lines[i], "|") || !strings.Contains(lines[i+1], "-") {
+		return nil, false
+	}
+	head := tableCells(lines[i])
+	delim := tableCells(lines[i+1])
+	if len(head) != len(delim) || (len(head) == 1 && !strings.Contains(lines[i+1], "|")) {
+		return nil, false
+	}
+	for _, d := range delim {
+		if !tableDelim.MatchString(d) {
+			return nil, false
+		}
+	}
+	return head, true
+}
+
+// table renders a pipe table: the header row, then every row up to the
+// first blank line or line without a pipe. Rows are cut or padded to the
+// header's width. Column alignment is not drawn.
+func table(head []string, rows []string) string {
+	var b strings.Builder
+	b.WriteString("<table><thead><tr>")
+	for _, h := range head {
+		b.WriteString("<th>" + inline(h) + "</th>")
+	}
+	b.WriteString("</tr></thead>")
+	if len(rows) > 0 {
+		b.WriteString("<tbody>")
+		for _, r := range rows {
+			cells := tableCells(r)
+			b.WriteString("<tr>")
+			for k := range head {
+				c := ""
+				if k < len(cells) {
+					c = cells[k]
+				}
+				b.WriteString("<td>" + inline(c) + "</td>")
+			}
+			b.WriteString("</tr>")
+		}
+		b.WriteString("</tbody>")
+	}
+	b.WriteString("</table>")
+	return b.String()
+}
+
 // Markdown renders a small, safe subset: paragraphs, fenced code, bullet
-// lists, inline code, bold and http(s) links. Everything is escaped first.
+// lists, pipe tables, inline code, bold and http(s) links. Everything is
+// escaped first.
 func Markdown(md string) string {
 	var b strings.Builder
 	lines := strings.Split(strings.ReplaceAll(md, "\r\n", "\n"), "\n")
@@ -475,6 +555,16 @@ func Markdown(md string) string {
 	for i := 0; i < len(lines); i++ {
 		l := lines[i]
 		t := strings.TrimSpace(l)
+		if head, ok := tableHead(lines, i); ok && !strings.HasPrefix(t, "```") && !strings.HasPrefix(t, "~~~") {
+			flushPara()
+			closeList()
+			j := i + 2
+			for ; j < len(lines) && strings.TrimSpace(lines[j]) != "" && strings.Contains(lines[j], "|"); j++ {
+			}
+			b.WriteString(table(head, lines[i+2:j]))
+			i = j - 1
+			continue
+		}
 		switch {
 		case strings.HasPrefix(t, "```") || strings.HasPrefix(t, "~~~"):
 			flushPara()

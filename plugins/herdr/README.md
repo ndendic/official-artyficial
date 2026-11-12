@@ -80,7 +80,7 @@ page's Accept Rules. It needs the herdr socket on the same machine
 
 ## Install from the Artyficial marketplace
 
-The Artyficial Space lists this Plugin from the release tag `artyficial.herdr--v1.2.0`.
+The Artyficial Space lists this Plugin from the release tag `artyficial.herdr--v1.3.0`.
 Install it from the Space on the device that runs your Workspace: Device Control downloads the
 release asset, checks its SHA-256 and its manifest, and installs it.
 
@@ -90,13 +90,13 @@ the same release folder, review it, and enable it.
 
 ## Install the release asset by hand
 
-1. Download `artyficial.herdr-1.2.0-linux-amd64.tar.gz` from the GitHub Release
-   `artyficial.herdr--v1.2.0` of this repository.
+1. Download `artyficial.herdr-1.3.0-linux-amd64.tar.gz` from the GitHub Release
+   `artyficial.herdr--v1.3.0` of this repository.
 2. Extract it into a new, empty folder. It holds `manifest.json`, the `provider` binary and
    `THIRD_PARTY_NOTICES`:
 
    ```sh
-   mkdir herdr-console && tar -xzf artyficial.herdr-1.2.0-linux-amd64.tar.gz -C herdr-console
+   mkdir herdr-console && tar -xzf artyficial.herdr-1.3.0-linux-amd64.tar.gz -C herdr-console
    ```
 
 3. As the signed-in owner (`rt login`) of the running Workspace, from the Workspace folder,
@@ -211,7 +211,7 @@ and does nothing.
 | `keys` | `pane, keys, confirm?` | keys a person chose on the dialog card; only to a blocked session |
 | `new` | | the new-session form |
 | `start` | `kind, other_kind?, cwd, name?` | a new tab in `console_workspace` (no focus), then `herdr agent start` |
-| `close` | `pane` | closes a session the console opened |
+| `close` | `pane` | closes a session the console opened, and its tab when nothing else is left there (see Safety) |
 | `teach` | `pane` | sends the patch-block primer once to a session the console opened |
 | `follow` | `pane?`, `fresh?`, `resync?` | renews the ticket, keeps streaming, sends `$pillAgent` again; `fresh` (a page that just loaded) forgets the shown view, so the next call renders it whole; `resync` (a tab shown again: its Stream was closed while hidden) renders the thread whole and sends `$pillAgent` again from the follower, which retries until the page listens |
 | `dismiss` | | cancels a confirm, or empties the console |
@@ -393,7 +393,9 @@ so the session reads the same in the terminal.
   The console itself also refuses `data-pill-*` controls, Datastar attributes, the console's
   own elements and signals, and `data-*` attributes outside a short list of plain words
   (`data-variant`, `data-state`, `data-status` and the like).
-- Plain text around the blocks stays in the thread as Markdown.
+- Plain text around the blocks stays in the thread as Markdown: paragraphs, headings (as bold lines),
+  bullet lists, fenced code, pipe tables (a header row, a `|---|` row, then rows; column
+  alignment is not drawn), inline code, bold and http(s) links. Everything is escaped first.
 
 `teach` sends a session the console opened a short primer with these rules, once.
 
@@ -409,6 +411,13 @@ so the session reads the same in the terminal.
   arrows, Enter, Esc); keys go only when a person presses one, and only to a blocked session.
 - **The console closes and teaches only sessions it opened.** It records them in
   `opened.json` in its data directory; a lost file only makes it more careful.
+- **Close takes the session's pane, then its tab when only companions are left.** Right after
+  the agent starts, the console records the other panes herdr or a herdr plugin put in the new
+  tab (herdr-sidebar opens one in every tab). On Close, when the tab holds nothing but those,
+  it closes the tab too, so no tab with an empty sidebar stays behind in `console_workspace`
+  (herdr removes that workspace with its last tab). A pane you split into the tab later keeps
+  the tab and everything in it. Sessions opened by console 1.2.0 or older have no record, so
+  only their pane is closed.
 - Sessions it opens go in the herdr workspace `console_workspace`, created with
   `--no-focus`; if herdr moves focus anyway, the console puts it back. It never takes your
   terminal's focus.

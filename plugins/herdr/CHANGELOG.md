@@ -1,5 +1,20 @@
 # herdr console (`artyficial.herdr`): changes
 
+## 1.3.0
+
+- **Tables in replies.** A Markdown pipe table in an agent's reply (a header row, a `|---|` row,
+  then rows) is drawn as a table instead of lines of pipes. Cells take inline code, bold and links
+  and are escaped like the rest; `\|` is a pipe inside a cell; a row with too few or too many
+  cells is fitted to the header. Column alignment (`:---:`) is not drawn.
+- **No empty tab after Close.** Closing a session the console opened also closes its tab when
+  nothing is left there but the panes herdr or a herdr plugin opened beside the agent (such as
+  herdr-sidebar's pane, which kept every closed session's tab alive in `console_workspace`). The
+  console records those panes when the agent starts. A pane you split into the tab keeps the
+  tab. Sessions opened by 1.2.0 have no record and keep the old behaviour: only the pane closes.
+
+Compatible with 1.2.0: the capability `artyficial.herdr.console` stays at 1.0.0, the configuration
+is unchanged, and `opened.json` gains an optional `companions` list per session.
+
 ## 1.2.0
 
 A page that cannot take Caller patches (a vouched Page) can now run the console: every call

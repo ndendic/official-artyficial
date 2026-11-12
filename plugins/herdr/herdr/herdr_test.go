@@ -144,3 +144,22 @@ func TestSubscribeReaderEndsOnResubscribe(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 }
+
+// pane list as herdr 0.9.5 answers it, with herdr-sidebar's pane in each
+// tab: TabPanes keeps the one tab's panes.
+func TestParseTabPanes(t *testing.T) {
+	out := []byte(`{"id":"cli:pane:list","result":{"panes":[` +
+		`{"agent_status":"unknown","label":"Sidebar","pane_id":"w1:p3","tab_id":"w1:t1","tokens":{"herdr-sidebar-explorer":"1"},"workspace_id":"w1"},` +
+		`{"agent_status":"unknown","pane_id":"w1:p1","tab_id":"w1:t1","workspace_id":"w1"},` +
+		`{"agent_status":"unknown","label":"Sidebar","pane_id":"w1:p4","tab_id":"w1:t2","workspace_id":"w1"}],"type":"pane_list"}}`)
+	got, err := parseTabPanes(out, "w1:t2")
+	if err != nil || len(got) != 1 || got[0] != "w1:p4" {
+		t.Fatalf("t2 = %v, %v", got, err)
+	}
+	if got, _ := parseTabPanes(out, "w1:t1"); len(got) != 2 {
+		t.Fatalf("t1 = %v", got)
+	}
+	if got, _ := parseTabPanes(out, "w1:t9"); len(got) != 0 {
+		t.Fatalf("t9 = %v", got)
+	}
+}

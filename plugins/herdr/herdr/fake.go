@@ -18,11 +18,18 @@ type Fake struct {
 	nextTab  int
 	openErr  error
 	startErr error
+	// extra are panes that hold no agent, by tab: a plugin's sidebar, or a
+	// shell the person split.
+	extra map[string][]string
+	// onStart runs inside Start, before it returns (a plugin opening its
+	// pane beside a new tab).
+	onStart func(tab string)
 
-	Prompts []Input // every Prompt, in order
-	Keys    []Input // every SendKeys, in order
-	Closed  []string
-	Started []string
+	Prompts    []Input // every Prompt, in order
+	Keys       []Input // every SendKeys, in order
+	Closed     []string
+	ClosedTabs []string
+	Started    []string
 }
 
 // Input is one recorded input.
@@ -33,7 +40,7 @@ type Input struct {
 
 // NewFake returns a Fake holding agents.
 func NewFake(agents ...Agent) *Fake {
-	f := &Fake{agents: map[string]Agent{}, screens: map[string]string{}}
+	f := &Fake{agents: map[string]Agent{}, screens: map[string]string{}, extra: map[string][]string{}}
 	for _, a := range agents {
 		f.agents[a.Pane] = a
 	}
@@ -158,13 +165,36 @@ func (f *Fake) OpenTab(_ context.Context, label, cwd, tabLabel string) (Opened, 
 func (f *Fake) Start(_ context.Context, name, kind, pane string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	tab := strings.Replace(pane, ":p", ":t", 1)
+	if f.onStart != nil {
+		f.onStart(tab)
+	}
 	if f.startErr != nil {
 		return f.startErr
 	}
 	ws, _, _ := strings.Cut(pane, ":")
-	f.agents[pane] = Agent{Pane: pane, Tab: strings.Replace(pane, ":p", ":t", 1), Workspace: ws, Name: name, Kind: kind, Status: "idle"}
+	f.agents[pane] = Agent{Pane: pane, Tab: tab, Workspace: ws, Name: name, Kind: kind, Status: "idle"}
 	f.Started = append(f.Started, name)
 	return nil
+}
+
+// AddPane puts a pane without an agent into tab.
+func (f *Fake) AddPane(tab, pane string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.extra[tab] = append(f.extra[tab], pane)
+}
+
+// OnStart makes every Start (failed or not) open a pane id(tab) beside the
+// new agent first, as herdr-sidebar does on a new tab; nil turns it off.
+func (f *Fake) OnStart(id func(tab string) string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if id == nil {
+		f.onStart = nil
+		return
+	}
+	f.onStart = func(tab string) { f.extra[tab] = append(f.extra[tab], id(tab)) }
 }
 
 func (f *Fake) ClosePane(_ context.Context, pane string) error {
@@ -172,5 +202,39 @@ func (f *Fake) ClosePane(_ context.Context, pane string) error {
 	defer f.mu.Unlock()
 	f.Closed = append(f.Closed, pane)
 	delete(f.agents, pane)
+	for tab, panes := range f.extra {
+		for i, p := range panes {
+			if p == pane {
+				f.extra[tab] = append(panes[:i:i], panes[i+1:]...)
+				break
+			}
+		}
+	}
+	return nil
+}
+
+func (f *Fake) TabPanes(_ context.Context, _ string, tab string) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var panes []string
+	for _, a := range f.agents {
+		if a.Tab == tab {
+			panes = append(panes, a.Pane)
+		}
+	}
+	sort.Strings(panes)
+	return append(panes, f.extra[tab]...), nil
+}
+
+func (f *Fake) CloseTab(_ context.Context, tab string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.ClosedTabs = append(f.ClosedTabs, tab)
+	for p, a := range f.agents {
+		if a.Tab == tab {
+			delete(f.agents, p)
+		}
+	}
+	delete(f.extra, tab)
 	return nil
 }

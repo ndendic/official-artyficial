@@ -76,6 +76,11 @@ type Client interface {
 	// ClosePane closes one pane; herdr removes its tab and workspace
 	// when they are left empty.
 	ClosePane(ctx context.Context, pane string) error
+	// TabPanes lists the pane ids in tab (of workspace), in herdr's order.
+	TabPanes(ctx context.Context, workspace, tab string) ([]string, error)
+	// CloseTab closes a tab and every pane in it; herdr removes the
+	// workspace when it was its last tab.
+	CloseTab(ctx context.Context, tab string) error
 }
 
 // Error is a herdr server error (JSON on stderr) or a CLI failure.
@@ -435,6 +440,47 @@ func (c *CLI) focusedWorkspace(ctx context.Context) string {
 // ClosePane closes one pane, never the rest of its tab.
 func (c *CLI) ClosePane(ctx context.Context, pane string) error {
 	_, err := c.run(ctx, 0, "pane", "close", pane)
+	return err
+}
+
+// TabPanes lists the pane ids in tab. herdr filters pane list by
+// workspace only, so the tab is picked out here.
+func (c *CLI) TabPanes(ctx context.Context, workspace, tab string) ([]string, error) {
+	args := []string{"pane", "list"}
+	if workspace != "" {
+		args = append(args, "--workspace", workspace)
+	}
+	out, err := c.run(ctx, 0, args...)
+	if err != nil {
+		return nil, err
+	}
+	return parseTabPanes(out, tab)
+}
+
+func parseTabPanes(out []byte, tab string) ([]string, error) {
+	var body struct {
+		Result struct {
+			Panes []struct {
+				Pane string `json:"pane_id"`
+				Tab  string `json:"tab_id"`
+			} `json:"panes"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal(out, &body); err != nil {
+		return nil, fmt.Errorf("herdr pane list: %w", err)
+	}
+	var panes []string
+	for _, p := range body.Result.Panes {
+		if p.Tab == tab {
+			panes = append(panes, p.Pane)
+		}
+	}
+	return panes, nil
+}
+
+// CloseTab closes one tab with every pane in it.
+func (c *CLI) CloseTab(ctx context.Context, tab string) error {
+	_, err := c.run(ctx, 0, "tab", "close", tab)
 	return err
 }
 

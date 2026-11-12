@@ -824,6 +824,7 @@ func (c *Console) startAsync(s *session, name, kind, cwd string, pages int32) {
 	// closed from the picker.
 	c.opened.Put(OpenedSession{Pane: o.Pane, Tab: o.Tab, Workspace: o.Workspace, Name: name, Kind: kind, Cwd: cwd, OpenedAt: c.now(), OpenedBy: s.id})
 	err = c.herdr.Start(ctx, name, kind, o.Pane)
+	c.noteCompanions(ctx, o)
 	if err != nil && herdr.Code(err) != "agent_not_ready" {
 		c.failStart(ctx, s, "herdr opened "+o.Pane+" but could not start "+kind+": "+herdrFault(err).Message+". Close it from the picker.")
 		return
@@ -842,6 +843,61 @@ func (c *Console) startAsync(s *session, name, kind, cwd string, pages int32) {
 	}
 }
 
+// noteCompanions records the panes herdr or a herdr plugin put in the
+// console's new tab beside the agent (herdr-sidebar opens one on every new
+// tab), so a close can tell them from a pane the person split there later.
+func (c *Console) noteCompanions(ctx context.Context, o herdr.Opened) {
+	if o.Tab == "" {
+		return
+	}
+	panes, err := c.herdr.TabPanes(ctx, o.Workspace, o.Tab)
+	if err != nil {
+		log.Printf("panes of %s after start: %s", o.Tab, herdrFault(err).Message)
+		return
+	}
+	var others []string
+	for _, p := range panes {
+		if p != o.Pane {
+			others = append(others, p)
+		}
+	}
+	c.opened.Update(o.Pane, func(r *OpenedSession) { r.Companions = others })
+}
+
+// closeTabIfOnlyCompanions closes the tab the console opened for o when
+// the agent's pane was the last pane in it that was not a companion, so
+// herdr is not left with a tab holding only a sidebar. A pane the person
+// made there keeps the tab. Errors are logged: the session itself is
+// already closed.
+func (c *Console) closeTabIfOnlyCompanions(ctx context.Context, o OpenedSession) {
+	if o.Tab == "" {
+		return
+	}
+	panes, err := c.herdr.TabPanes(ctx, o.Workspace, o.Tab)
+	if err != nil {
+		log.Printf("panes of %s after close: %s", o.Tab, herdrFault(err).Message)
+		return
+	}
+	if len(panes) == 0 {
+		return // herdr closed the tab with its last pane
+	}
+	companion := map[string]bool{}
+	for _, p := range o.Companions {
+		companion[p] = true
+	}
+	for _, p := range panes {
+		if p == o.Pane {
+			return // herdr has not let the pane go; leave the tab as it is
+		}
+		if !companion[p] {
+			return
+		}
+	}
+	if err := c.herdr.CloseTab(ctx, o.Tab); err != nil && herdr.Code(err) != "tab_not_found" {
+		log.Printf("close tab %s: %s", o.Tab, herdrFault(err).Message)
+	}
+}
+
 // ---- close, teach, follow, dismiss ----
 
 func (c *Console) closePane(ctx context.Context, s *session, pane string) (map[string]any, *Fault) {
@@ -855,11 +911,14 @@ func (c *Console) closePane(ctx context.Context, s *session, pane string) (map[s
 		c.opened.Delete(pane)
 		return nil, c.fail(ctx, s, denied, "the pane "+pane+" is no longer the session "+o.Name+" the console opened; close it in herdr")
 	}
-	// The pane alone: another pane the user split into that tab stays.
+	// The pane first; then the tab, when nothing but its companions (a
+	// sidebar a herdr plugin opened) is left. A pane the person split into
+	// that tab keeps it.
 	if err := c.herdr.ClosePane(ctx, o.Pane); err != nil && herdr.Code(err) != "pane_not_found" {
 		hf := herdrFault(err)
 		return nil, c.fail(ctx, s, hf.Code, hf.Message)
 	}
+	c.closeTabIfOnlyCompanions(ctx, o)
 	c.opened.Delete(pane)
 	s.mu.Lock()
 	// An empty selection is unknown state (a restarted Plugin): the chip

@@ -20,6 +20,11 @@ type OpenedSession struct {
 	OpenedAt  time.Time `json:"opened_at"`
 	OpenedBy  string    `json:"opened_by"` // the browser session (unverified id)
 	Taught    bool      `json:"taught"`
+	// Companions are the other panes in Tab when the agent had started: the
+	// ones herdr or a herdr plugin opened beside it (a sidebar). Close
+	// closes the tab when only these are left; a pane not listed here is
+	// one the person made, and the tab stays for it.
+	Companions []string `json:"companions,omitempty"`
 }
 
 // Registry is the set of opened sessions, kept in the Plugin's data
@@ -82,6 +87,21 @@ func (r *Registry) Put(o OpenedSession) {
 	r.m[o.Pane] = o
 	r.saveLocked()
 	r.mu.Unlock()
+}
+
+// Update changes the opened session of pane in place; it does nothing
+// when the pane is no longer registered (it was closed meanwhile).
+func (r *Registry) Update(pane string, change func(*OpenedSession)) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	o, ok := r.m[pane]
+	if !ok {
+		return false
+	}
+	change(&o)
+	r.m[pane] = o
+	r.saveLocked()
+	return true
 }
 
 // Delete forgets a pane.
